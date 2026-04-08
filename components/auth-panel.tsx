@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { useAppStore } from "@/store/app-store";
 import { useToastStore } from "@/store/toast-store";
+import { getRoleForEmail } from "@/lib/auth-shared";
+import { syncRegisteredCustomer } from "@/app/register/actions";
 
 interface AuthPanelProps {
   mode: "login" | "register";
@@ -23,8 +25,14 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
     rememberMe: false,
   });
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const rolePreview = form.email.trim() ? getRoleForEmail(form.email.trim()) : "customer";
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     if (!form.email.trim() || !form.password.trim()) {
       setError("Email and password are required.");
       addToast({
@@ -76,12 +84,34 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
         return;
       }
 
-      register({
-        name: form.name.trim(),
-        email: form.email.trim(),
-        studentId: form.studentId.trim(),
-        rememberMe: form.rememberMe,
-      });
+      try {
+        setIsSubmitting(true);
+        await syncRegisteredCustomer({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          studentId: form.studentId.trim(),
+          rememberMe: form.rememberMe,
+        });
+        register({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          studentId: form.studentId.trim(),
+          rememberMe: form.rememberMe,
+        });
+      } catch (registrationError) {
+        const message =
+          registrationError instanceof Error
+            ? registrationError.message
+            : "Unable to create your Stripe customer profile.";
+        setError(message);
+        addToast({
+          title: "Registration error",
+          description: message,
+          variant: "error",
+        });
+        setIsSubmitting(false);
+        return;
+      }
     } else {
       login({
         email: form.email.trim(),
@@ -94,11 +124,12 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
       title: mode === "login" ? "Login successful" : "Registration successful",
       description:
         mode === "login"
-          ? "You are now signed in."
-          : "Your account has been created.",
+          ? `You are now signed in as ${getRoleForEmail(form.email.trim())}.`
+          : `Your account has been created with ${getRoleForEmail(form.email.trim())} access.`,
       variant: "success",
     });
-    router.push("/dashboard");
+    router.push(getRoleForEmail(form.email.trim()) === "admin" ? "/admin" : "/dashboard");
+    setIsSubmitting(false);
   };
 
   return (
@@ -114,6 +145,9 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
       <p className="mt-3 text-sm leading-7 text-stone-600">
         Includes client-side validation, clear inline error messages, and a
         remember me option stored locally for this demo project.
+      </p>
+      <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-500">
+        Current role for this email: {rolePreview}
       </p>
 
       <div className="mt-8 space-y-4">
@@ -203,9 +237,10 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
 
         <Button
           onClick={onSubmit}
+          disabled={isSubmitting}
           className="w-full rounded-full bg-stone-950 py-6 text-sm uppercase tracking-[0.18em] hover:bg-stone-800"
         >
-          {mode === "login" ? "Sign in" : "Create account"}
+          {isSubmitting ? "Processing..." : mode === "login" ? "Sign in" : "Create account"}
         </Button>
       </div>
     </div>

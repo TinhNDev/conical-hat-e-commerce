@@ -39,9 +39,10 @@ export const DashboardPanel = () => {
         </p>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
           { label: "Student ID", value: auth.user.studentId },
+          { label: "Role", value: auth.user.role },
           { label: "Saved items", value: wishlist.length.toString() },
           { label: "Total spent", value: formatPrice(totalSpent) },
         ].map((item) => (
@@ -77,6 +78,11 @@ export const DashboardPanel = () => {
         <div className="rounded-[1.75rem] border border-stone-200 bg-stone-950 p-6 text-stone-50">
           <h2 className="text-2xl font-semibold">Quick links</h2>
           <div className="mt-4 flex flex-col gap-3">
+            {auth.user.role === "admin" ? (
+              <Link href="/admin" className="rounded-full border border-stone-700 px-4 py-3 text-sm">
+                Open admin panel
+              </Link>
+            ) : null}
             <Link href="/orders" className="rounded-full border border-stone-700 px-4 py-3 text-sm">
               View order history
             </Link>

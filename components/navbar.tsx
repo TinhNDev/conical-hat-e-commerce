@@ -18,6 +18,7 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
   { href: "/search", label: "Search" },
+  { href: "/admin", label: "Admin" },
   { href: "/blog", label: "Blog / FAQ" },
   { href: "/contact", label: "Contact" },
   { href: "/about", label: "About" },
@@ -76,7 +77,9 @@ export const Navbar = () => {
           </Link>
 
           <div className="hidden rounded-full border border-stone-200 bg-white/80 px-3 py-2 shadow-[0_16px_40px_rgba(15,23,42,0.06)] dark:border-stone-700 dark:bg-stone-900/80 lg:flex lg:items-center lg:gap-1">
-            {navLinks.map((link) => (
+            {navLinks
+              .filter((link) => (link.href === "/admin" ? auth.user?.role === "admin" : true))
+              .map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -131,7 +134,9 @@ export const Navbar = () => {
         {mobileOpen ? (
           <div className="mt-4 rounded-[1.75rem] border border-stone-200 bg-white p-4 shadow-[0_18px_44px_rgba(15,23,42,0.08)] dark:border-stone-700 dark:bg-stone-950 lg:hidden">
             <div className="grid gap-2">
-              {navLinks.map((link) => (
+              {navLinks
+                .filter((link) => (link.href === "/admin" ? auth.user?.role === "admin" : true))
+                .map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}

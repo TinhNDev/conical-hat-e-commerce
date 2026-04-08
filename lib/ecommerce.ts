@@ -15,6 +15,7 @@ export interface UserProfile {
   name: string;
   email: string;
   studentId: string;
+  role: "admin" | "customer";
 }
 
 export interface ShippingAddress {

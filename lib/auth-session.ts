@@ -45,7 +45,12 @@ export const verifyAccessToken = async (token: string | undefined | null): Promi
       name: String(payload.name ?? ""),
       email: String(payload.email ?? ""),
       studentId: String(payload.studentId ?? ""),
-      role: payload.role === "admin" ? "admin" : "customer",
+      role:
+        payload.role === "admin"
+          ? "admin"
+          : payload.role === "manager"
+            ? "manager"
+            : "customer",
     };
   } catch {
     return null;

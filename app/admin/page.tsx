@@ -1,7 +1,6 @@
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { getAdminCustomers, getAdminProducts, syncAdminDataFromStripe } from "@/lib/admin-data";
 import { getSessionFromCookies } from "@/lib/auth";
-import { formatPrice } from "@/lib/ecommerce";
-import { stripe } from "@/lib/stripe";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Boxes, CircleUserRound, CreditCard, Mail, Package2, Phone, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
@@ -16,6 +15,17 @@ import {
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
+
+const formatDatabasePrice = (amount: number | null | undefined, currency = "usd") => {
+  if (amount == null) {
+    return "Custom pricing";
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(amount);
+};
 
 const inputClassName =
   "w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] outline-none transition focus:border-stone-400 focus:bg-stone-50 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:focus:bg-stone-900";
@@ -111,22 +121,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     redirect("/login?redirect=/admin");
   }
 
-  const [{ data: products }, { data: customers }, resolvedSearchParams] = await Promise.all([
-    stripe.products.list({
-      expand: ["data.default_price"],
-      limit: 24,
-    }),
-    stripe.customers.list({
-      limit: 24,
-    }),
-    (searchParams ?? Promise.resolve({})) as Promise<AdminSearchParams>,
-  ]);
+  const resolvedSearchParams = await ((searchParams ?? Promise.resolve({})) as Promise<AdminSearchParams>);
+  await syncAdminDataFromStripe();
+  const [products, customers] = await Promise.all([getAdminProducts(), getAdminCustomers()]);
 
   const feedbackType = resolvedSearchParams.type === "error" ? "error" : "success";
   const feedbackMessage = resolvedSearchParams.message;
   const selectedView = resolvedSearchParams.view === "customers" ? "customers" : "products";
-  const activeProductRecords = products.filter((product) => product.active);
-  const archivedProductRecords = products.filter((product) => !product.active);
+  const activeProductRecords = products.filter((product) => product.status === "active");
+  const archivedProductRecords = products.filter((product) => product.status === "archived");
   const activeProducts = activeProductRecords.length;
   const customersWithEmail = customers.filter((customer) => Boolean(customer.email)).length;
 
@@ -167,7 +170,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/75 px-4 py-2">
                 <Sparkles className="h-4 w-4" />
-                Live Stripe workspace
+                Prisma + Stripe sync
               </div>
             </div>
           </div>
@@ -247,7 +250,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <div>
                 <h3 className="text-lg font-semibold text-stone-950">Create product</h3>
                 <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-                  Add a new Stripe product with pricing, imagery, and storefront metadata.
+                  Add a new product record in your database and sync it to Stripe for checkout.
                 </p>
               </div>
               <div className="hidden rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 shadow-sm md:block dark:bg-stone-950 dark:text-stone-300">
@@ -311,11 +314,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
             <div className="mt-4 space-y-4">
             {activeProductRecords.map((product) => {
-              const defaultPrice =
-                product.default_price && typeof product.default_price !== "string"
-                  ? product.default_price
-                  : null;
-              const primaryImage = product.images[0] ?? null;
+              const primaryImage = product.images[0]?.url ?? null;
 
               return (
                 <div key={product.id} className={subPanelClassName}>
@@ -327,7 +326,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         <div className="space-y-3">
                           <h3 className="text-xl font-semibold text-stone-950">{product.name}</h3>
                           <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                            {product.id}
+                            {product.stripeProductId ?? product.id}
                           </p>
                           <div className="flex flex-wrap gap-2">
                             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-900 dark:text-stone-300">
@@ -343,10 +342,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-900 dark:text-stone-300">
-                            {product.active ? "Active" : "Archived"}
+                            {product.status}
                           </span>
                           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200">
-                            {formatPrice(defaultPrice?.unit_amount ?? null, defaultPrice?.currency ?? "usd")}
+                            {formatDatabasePrice(product.basePriceAmount ? Number(product.basePriceAmount) : null, product.currency)}
                           </span>
                         </div>
                       </div>
@@ -371,7 +370,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                               type="number"
                               min="0"
                               step="0.01"
-                              defaultValue={defaultPrice?.unit_amount ? (defaultPrice.unit_amount / 100).toFixed(2) : ""}
+                              defaultValue={product.basePriceAmount ? Number(product.basePriceAmount).toFixed(2) : ""}
                               className={inputClassName}
                             />
                           </label>
@@ -379,12 +378,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                             Currency
                             <input
                               name="currency"
-                              defaultValue={(defaultPrice?.currency ?? "usd").toUpperCase()}
+                              defaultValue={product.currency.toUpperCase()}
                               className={inputClassName}
                             />
                           </label>
                           <label className={`${labelClassName} flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 dark:border-stone-700 dark:bg-stone-950`}>
-                            <input name="active" type="checkbox" defaultChecked={product.active} className="h-4 w-4 rounded border-stone-300" />
+                            <input name="active" type="checkbox" defaultChecked={product.status === "active"} className="h-4 w-4 rounded border-stone-300" />
                             Active in storefront
                           </label>
                         </div>
@@ -401,7 +400,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           Images
                           <input
                             name="images"
-                            defaultValue={product.images.join(", ")}
+                            defaultValue={product.images.map((image) => image.url).join(", ")}
                             className={inputClassName}
                           />
                         </label>
@@ -410,7 +409,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           <textarea
                             name="metadata"
                             rows={3}
-                            defaultValue={JSON.stringify(product.metadata, null, 2)}
+                            defaultValue={JSON.stringify(product.metadata ?? {}, null, 2)}
                             className={inputClassName}
                           />
                         </label>
@@ -419,7 +418,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                             Save changes
                           </button>
                           <span className="inline-flex items-center rounded-full bg-white px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 dark:bg-stone-950 dark:text-stone-300">
-                            Price updates create a new Stripe price
+                            Database record stays in sync with Stripe pricing
                           </span>
                         </div>
                       </form>
@@ -457,11 +456,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
               <div className="mt-4 space-y-4">
                 {archivedProductRecords.map((product) => {
-                  const defaultPrice =
-                    product.default_price && typeof product.default_price !== "string"
-                      ? product.default_price
-                      : null;
-                  const primaryImage = product.images[0] ?? null;
+                  const primaryImage = product.images[0]?.url ?? null;
 
                   return (
                   <div key={product.id} className={subPanelClassName}>
@@ -473,7 +468,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           <div>
                             <h3 className="text-xl font-semibold text-stone-950">{product.name}</h3>
                             <p className="mt-1 text-xs uppercase tracking-[0.18em] text-stone-500">
-                              {product.id}
+                              {product.stripeProductId ?? product.id}
                             </p>
                           </div>
                           <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-900 dark:text-stone-300">
@@ -493,18 +488,18 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                             </label>
                             <label className={labelClassName}>
                               Images
-                              <input name="images" defaultValue={product.images.join(", ")} className={inputClassName} />
+                              <input name="images" defaultValue={product.images.map((image) => image.url).join(", ")} className={inputClassName} />
                             </label>
                             <label className={labelClassName}>
                               Currency
                               <input
                                 name="currency"
-                                defaultValue={(defaultPrice?.currency ?? "usd").toUpperCase()}
+                                defaultValue={product.currency.toUpperCase()}
                                 className={inputClassName}
                               />
                             </label>
                             <label className={`${labelClassName} flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 dark:border-stone-700 dark:bg-stone-950`}>
-                              <input name="active" type="checkbox" defaultChecked={product.active} className="h-4 w-4 rounded border-stone-300" />
+                              <input name="active" type="checkbox" defaultChecked={product.status === "active"} className="h-4 w-4 rounded border-stone-300" />
                               Active in storefront
                             </label>
                           </div>
@@ -514,7 +509,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           </label>
                           <label className={labelClassName}>
                             Metadata JSON
-                            <textarea name="metadata" rows={3} defaultValue={JSON.stringify(product.metadata, null, 2)} className={inputClassName} />
+                            <textarea name="metadata" rows={3} defaultValue={JSON.stringify(product.metadata ?? {}, null, 2)} className={inputClassName} />
                           </label>
                           <label className={labelClassName}>
                             Price
@@ -523,7 +518,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                               type="number"
                               min="0"
                               step="0.01"
-                              defaultValue={defaultPrice?.unit_amount ? (defaultPrice.unit_amount / 100).toFixed(2) : ""}
+                              defaultValue={product.basePriceAmount ? Number(product.basePriceAmount).toFixed(2) : ""}
                               className={inputClassName}
                             />
                           </label>
@@ -562,7 +557,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <div>
                 <h3 className="text-lg font-semibold text-stone-950">Create customer</h3>
                 <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-                  Capture the essentials now and enrich records later as orders come in.
+                  Create a database-backed customer profile and sync it to Stripe.
                 </p>
               </div>
               <div className="hidden rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 shadow-sm md:block dark:bg-stone-950 dark:text-stone-300">
@@ -582,6 +577,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 Phone
                 <input name="phone" className={inputClassName} placeholder="+84 90 000 0000" />
               </label>
+              <label className={labelClassName}>
+                Student ID
+                <input name="studentId" required className={inputClassName} placeholder="MSSV-2026001" />
+              </label>
             </div>
             <label className={labelClassName}>
               Notes
@@ -600,7 +599,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   All customers
                 </p>
                 <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-                  {customers.length} customer profiles available in Stripe.
+                  {customers.length} customer profiles available in your database.
                 </p>
               </div>
               <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-950 dark:text-stone-300">
@@ -617,7 +616,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       {customer.name || "Unnamed customer"}
                     </h3>
                     <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                      {customer.id}
+                      {customer.stripeCustomerId ?? customer.id}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {customer.email ? (
@@ -639,8 +638,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     </div>
                   </div>
                   <p className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-900 dark:text-stone-300">
-                    {customer.created
-                      ? new Date(customer.created * 1000).toLocaleDateString("en-US", {
+                    {customer.createdAt
+                      ? new Date(customer.createdAt).toLocaleDateString("en-US", {
                           year: "numeric",
                           month: "short",
                           day: "numeric",
@@ -667,6 +666,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       />
                     </label>
                     <label className={labelClassName}>
+                      Student ID
+                      <input name="studentId" required defaultValue={customer.studentId} className={inputClassName} />
+                    </label>
+                    <label className={labelClassName}>
                       Phone
                       <input name="phone" defaultValue={customer.phone ?? ""} className={inputClassName} />
                     </label>
@@ -676,7 +679,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <textarea
                       name="notes"
                       rows={3}
-                      defaultValue={customer.description ?? ""}
+                      defaultValue={customer.notes ?? ""}
                       className={inputClassName}
                     />
                   </label>
@@ -687,7 +690,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     </button>
                     <span className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300">
                       <Mail className="h-4 w-4" />
-                      Keep email and phone current
+                      Keep email, phone, and student ID current
                     </span>
                   </div>
                 </form>

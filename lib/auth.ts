@@ -14,7 +14,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 
-type UserRole = "admin" | "customer";
+type UserRole = "admin" | "manager" | "customer";
 
 const DEFAULT_ADMIN_EMAILS = ["admin@atelier.store"];
 
@@ -38,7 +38,7 @@ const toPublicUser = (user: {
   name: user.name,
   email: user.email,
   studentId: user.studentId,
-  role: user.role === "admin" ? "admin" : "customer",
+  role: user.role,
 });
 
 const hashPassword = (password: string, salt: string) =>
@@ -177,7 +177,7 @@ export const getSessionFromCookies = async () => {
   return {
     user,
     isAuthenticated: Boolean(user),
-    isAdmin: user?.role === "admin",
+    isAdmin: user?.role === "admin" || user?.role === "manager",
   };
 };
 

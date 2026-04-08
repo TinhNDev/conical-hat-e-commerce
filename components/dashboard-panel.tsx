@@ -88,7 +88,7 @@ export const DashboardPanel = () => {
         <div className="rounded-[1.75rem] border border-stone-200 bg-stone-950 p-6 text-stone-50">
           <h2 className="text-2xl font-semibold">Quick links</h2>
           <div className="mt-4 flex flex-col gap-3">
-            {auth.user.role === "admin" ? (
+            {auth.user.role === "admin" || auth.user.role === "manager" ? (
               <Link href="/admin" className="rounded-full border border-stone-700 px-4 py-3 text-sm">
                 Open admin panel
               </Link>

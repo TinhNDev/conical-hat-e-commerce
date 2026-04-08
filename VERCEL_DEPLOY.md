@@ -56,6 +56,7 @@ In Vercel Project Settings -> Environment Variables, add:
 
 ```env
 DATABASE_URL=
+DIRECT_URL=
 SESSION_SECRET=
 ADMIN_EMAILS=
 STRIPE_SECRET_KEY=
@@ -68,6 +69,8 @@ Recommended values:
 - `SESSION_SECRET`: a long random secret
 - `ADMIN_EMAILS`: comma-separated admin emails, for example `admin@atelier.store`
 - `NEXT_PUBLIC_BASE_URL`: your production domain, for example `https://your-project.vercel.app`
+- `DATABASE_URL`: Neon pooled URL for runtime
+- `DIRECT_URL`: Neon direct non-pooler URL for Prisma migrations
 
 Add `STRIPE_WEBHOOK_SECRET` too if you use Stripe webhooks in production.
 
@@ -162,4 +165,3 @@ Make sure you are not committing:
 - `.vercel/`
 - `.next/`
 - `generated/`
-

@@ -1,40 +1,13 @@
-import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { config as loadEnv } from "dotenv";
 import { defineConfig, env } from "prisma/config";
 
-const loadEnvFile = (filename: string) => {
-  const filePath = path.join(process.cwd(), filename);
+loadEnv({ path: path.resolve(process.cwd(), ".env") });
+loadEnv({ path: path.resolve(process.cwd(), ".env.local"), override: true });
+loadEnv({ path: path.resolve(process.cwd(), ".env.development.local"), override: true });
 
-  if (!existsSync(filePath)) {
-    return;
-  }
-
-  const contents = readFileSync(filePath, "utf8");
-
-  for (const rawLine of contents.split("\n")) {
-    const line = rawLine.trim();
-
-    if (!line || line.startsWith("#")) {
-      continue;
-    }
-
-    const separatorIndex = line.indexOf("=");
-
-    if (separatorIndex === -1) {
-      continue;
-    }
-
-    const key = line.slice(0, separatorIndex).trim();
-    const value = line.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, "");
-
-    if (!(key in process.env)) {
-      process.env[key] = value;
-    }
-  }
-};
-
-loadEnvFile(".env");
-loadEnvFile(".env.local");
+console.log("DATABASE_URL =", process.env.DATABASE_URL);
+console.log("DIRECT_URL =", process.env.DIRECT_URL);
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -42,6 +15,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    url: env("DIRECT_URL"),
   },
 });

@@ -5,10 +5,17 @@
 Copy values from `.env.example` and provide at least:
 
 ```bash
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/conical_hat_ecommerce?schema=public"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST-pooler.REGION.aws.neon.tech/neondb?sslmode=require"
+DIRECT_URL="postgresql://USER:PASSWORD@HOST.REGION.aws.neon.tech/neondb?sslmode=require"
 SESSION_SECRET="change-me-to-a-long-random-secret"
 ADMIN_EMAILS="admin@atelier.store"
 ```
+
+Notes:
+
+- `DATABASE_URL` is for the app runtime and can use Neon pooled connections.
+- `DIRECT_URL` is for Prisma CLI commands such as `db:migrate` and `db:deploy`.
+- If you use local PostgreSQL, `DIRECT_URL` can be the same as `DATABASE_URL`.
 
 ## 2. Start PostgreSQL
 

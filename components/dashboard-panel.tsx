@@ -99,7 +99,7 @@ export const DashboardPanel = () => {
             <Link href="/products" className="rounded-full border border-stone-700 px-4 py-3 text-sm">
               Continue shopping
             </Link>
-            <Link href="/search" className="rounded-full border border-stone-700 px-4 py-3 text-sm">
+            <Link href="/products?q=studio" className="rounded-full border border-stone-700 px-4 py-3 text-sm">
               Search catalog
             </Link>
           </div>

@@ -3,7 +3,7 @@ import { teamMembers } from "@/lib/ecommerce";
 
 const footerLinks = [
   { href: "/products", label: "Products" },
-  { href: "/search", label: "Search" },
+  { href: "/products?q=studio", label: "Search" },
   { href: "/cart", label: "Cart" },
   { href: "/contact", label: "Contact" },
   { href: "/about", label: "About" },
@@ -22,11 +22,6 @@ export const Footer = () => {
       <div className="container mx-auto grid gap-8 px-4 py-10 md:grid-cols-[1.1fr_0.9fr_1fr]">
         <div>
           <p className="font-display text-3xl">Atelier Store</p>
-          <p className="mt-4 max-w-md text-sm leading-7 text-stone-300">
-            A modern ecommerce demo built with Next.js, Stripe, and local app
-            state. The storefront now includes product discovery, cart,
-            checkout, account flows, and supporting information pages.
-          </p>
           <div className="mt-5 space-y-2 text-sm text-stone-300">
             <p>Email: support@atelier-store.demo</p>
             <p>Phone: +84 28 1234 5678</p>
@@ -86,13 +81,6 @@ export const Footer = () => {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      <div className="border-t border-stone-800">
-        <div className="container mx-auto flex flex-col gap-2 px-4 py-4 text-xs uppercase tracking-[0.18em] text-stone-400 sm:flex-row sm:items-center sm:justify-between">
-          <p>2026 Atelier Store</p>
-          <p>Built for the ecommerce feature checklist</p>
         </div>
       </div>
     </footer>

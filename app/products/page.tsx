@@ -4,7 +4,17 @@ import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProductsPage() {
+interface ProductsPageProps {
+  searchParams?: Promise<{
+    q?: string;
+  }>;
+}
+
+export default async function ProductsPage({ searchParams }: ProductsPageProps) {
+  const resolvedSearchParams = await (searchParams ?? Promise.resolve({}));
+  const initialSearchTerm = typeof resolvedSearchParams.q === "string"
+    ? resolvedSearchParams.q
+    : "";
   const products = await stripe.products.list({
     expand: ["data.default_price"],
     limit: 18,
@@ -27,11 +37,11 @@ export default async function ProductsPage() {
           Filter, sort, and browse the full collection
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-stone-700">
-          Use category, price, rating, and sorting controls to narrow the
-          catalog. Pagination keeps the grid clean without losing discoverability.
+          Use the upgraded search studio, category filters, and sorting controls
+          to narrow the catalog without losing visual clarity.
         </p>
       </section>
-      <ProductList products={plainProducts} />
+      <ProductList products={plainProducts} initialSearchTerm={initialSearchTerm} />
     </div>
   );
 }

@@ -8,16 +8,25 @@ import {
   XMarkIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./theme-toggle";
 import { useCartStore } from "@/store/cart-store";
 import { useAppStore } from "@/store/app-store";
 
+const quickSearchSuggestions = [
+  "work essentials",
+  "minimal",
+  "travel",
+  "premium",
+  "studio",
+  "under $50",
+];
+
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
-  { href: "/search", label: "Search" },
   { href: "/admin", label: "Admin" },
   { href: "/blog", label: "Blog / FAQ" },
   { href: "/contact", label: "Contact" },
@@ -25,10 +34,24 @@ const navLinks = [
 ];
 
 export const Navbar = () => {
+  const router = useRouter();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [quickSearchTerm, setQuickSearchTerm] = useState("");
   const { items } = useCartStore();
   const { auth } = useAppStore();
   const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
+  const trimmedQuickSearchTerm = quickSearchTerm.trim();
+  const highlightedSuggestions = useMemo(
+    () =>
+      quickSearchSuggestions.filter((item) =>
+        trimmedQuickSearchTerm
+          ? item.toLowerCase().includes(trimmedQuickSearchTerm.toLowerCase())
+          : true
+      ),
+    [trimmedQuickSearchTerm]
+  );
 
   useEffect(() => {
     const handleResize = () => {
@@ -41,18 +64,35 @@ export const Navbar = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    if (!searchOpen) {
+      return;
+    }
+
+    searchInputRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSearchOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [searchOpen]);
+
+  const submitQuickSearch = (value: string) => {
+    const nextValue = value.trim();
+    setSearchOpen(false);
+    setQuickSearchTerm(nextValue);
+    router.push(nextValue ? `/products?q=${encodeURIComponent(nextValue)}` : "/products");
+  };
+
   return (
     <header className="sticky top-0 z-50 border-b border-stone-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(250,247,242,0.92)_100%)] backdrop-blur-xl transition-colors duration-300 dark:border-stone-800 dark:bg-[linear-gradient(180deg,rgba(17,24,39,0.96)_0%,rgba(10,10,10,0.92)_100%)]">
-      <div className="border-b border-stone-200/70 bg-stone-950 text-stone-100 dark:border-stone-800">
-        <div className="container mx-auto flex items-center justify-between gap-4 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-stone-300">
-          <p>Curated storefront experience</p>
-          <div className="hidden gap-6 sm:flex">
-            <span>Stripe-ready checkout</span>
-            <span>Wishlist and dashboard</span>
-          </div>
-        </div>
-      </div>
-
       <nav className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-3">
@@ -69,9 +109,6 @@ export const Navbar = () => {
             <div>
               <p className="font-display text-3xl leading-none text-stone-950 dark:text-stone-100 sm:text-[2.15rem]">
                 Atelier Store
-              </p>
-              <p className="mt-1 text-xs uppercase tracking-[0.28em] text-stone-500 dark:text-stone-400 sm:text-[13px]">
-                Modern curated commerce
               </p>
             </div>
           </Link>
@@ -92,13 +129,75 @@ export const Navbar = () => {
 
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
-            <Link
-              href="/search"
-              className="rounded-full border border-stone-200 bg-white/80 p-2.5 text-stone-700 transition hover:border-stone-400 hover:text-stone-950 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-100 dark:hover:border-stone-500 dark:hover:text-white"
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitQuickSearch(quickSearchTerm);
+              }}
+              className={`hidden items-center overflow-hidden rounded-full border bg-white/85 shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-300 dark:bg-stone-900/85 sm:flex ${
+                searchOpen
+                  ? "w-[min(26rem,42vw)] border-stone-400 pr-2 dark:border-stone-500"
+                  : "w-11 border-stone-200 dark:border-stone-700"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  if (searchOpen && !trimmedQuickSearchTerm) {
+                    setSearchOpen(false);
+                    return;
+                  }
+
+                  setSearchOpen(true);
+                }}
+                className="flex h-11 w-11 flex-none items-center justify-center text-stone-700 transition hover:text-stone-950 dark:text-stone-100 dark:hover:text-white"
+                aria-label={searchOpen ? "Expand search" : "Search products"}
+              >
+                <MagnifyingGlassIcon className="h-5 w-5" />
+              </button>
+
+              <div
+                className={`flex items-center gap-2 transition-all duration-300 ${
+                  searchOpen ? "w-full opacity-100" : "w-0 opacity-0"
+                }`}
+              >
+                <input
+                  ref={searchInputRef}
+                  value={quickSearchTerm}
+                  onChange={(event) => setQuickSearchTerm(event.target.value)}
+                  placeholder="Search products, styles, or categories"
+                  className="w-full bg-transparent py-2 text-sm text-stone-900 outline-none placeholder:text-stone-400 dark:text-stone-100 dark:placeholder:text-stone-500"
+                />
+                {trimmedQuickSearchTerm ? (
+                  <button
+                    type="submit"
+                    className="rounded-full bg-stone-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-stone-200"
+                  >
+                    Go
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickSearchTerm("");
+                    setSearchOpen(false);
+                  }}
+                  className="rounded-full p-1.5 text-stone-500 transition hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
+                  aria-label="Close search"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+              </div>
+            </form>
+
+            <button
+              type="button"
+              onClick={() => setSearchOpen((value) => !value)}
+              className="rounded-full border border-stone-200 bg-white/80 p-2.5 text-stone-700 transition hover:border-stone-400 hover:text-stone-950 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-100 dark:hover:border-stone-500 dark:hover:text-white sm:hidden"
               aria-label="Search products"
             >
               <MagnifyingGlassIcon className="h-5 w-5" />
-            </Link>
+            </button>
             <Link
               href="/cart"
               className="relative rounded-full border border-stone-200 bg-white/80 p-2.5 text-stone-700 transition hover:border-stone-400 hover:text-stone-950 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-100 dark:hover:border-stone-500 dark:hover:text-white"
@@ -161,6 +260,51 @@ export const Navbar = () => {
                 {auth.isAuthenticated ? "Dashboard" : "Login"}
               </Link>
             </div>
+          </div>
+        ) : null}
+        {searchOpen ? (
+          <div className="mt-4 space-y-4 rounded-[1.75rem] border border-stone-200 bg-white p-4 shadow-[0_18px_44px_rgba(15,23,42,0.08)] dark:border-stone-700 dark:bg-stone-950 sm:hidden">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitQuickSearch(quickSearchTerm);
+              }}
+              className="space-y-3"
+            >
+              <div className="flex items-center gap-3 rounded-[1.25rem] border border-stone-300 bg-stone-50 px-4 py-3 dark:border-stone-700 dark:bg-stone-900">
+                <MagnifyingGlassIcon className="h-5 w-5 flex-none text-stone-400" />
+                <input
+                  ref={searchInputRef}
+                  value={quickSearchTerm}
+                  onChange={(event) => setQuickSearchTerm(event.target.value)}
+                  placeholder="Search products or styles"
+                  className="w-full bg-transparent text-sm text-stone-900 outline-none placeholder:text-stone-400 dark:text-stone-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickSearchTerm("");
+                    setSearchOpen(false);
+                  }}
+                  className="text-stone-500 dark:text-stone-400"
+                  aria-label="Close search"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {highlightedSuggestions.slice(0, 4).map((term) => (
+                  <button
+                    key={term}
+                    type="button"
+                    onClick={() => submitQuickSearch(term)}
+                    className="rounded-full border border-stone-300 px-3 py-2 text-sm text-stone-700 dark:border-stone-700 dark:text-stone-200"
+                  >
+                    {term}
+                  </button>
+                ))}
+              </div>
+            </form>
           </div>
         ) : null}
       </nav>

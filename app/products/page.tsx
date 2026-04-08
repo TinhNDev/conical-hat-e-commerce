@@ -10,8 +10,12 @@ interface ProductsPageProps {
   }>;
 }
 
+type ProductsSearchParams = {
+  q?: string | string[];
+};
+
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
-  const resolvedSearchParams = await (searchParams ?? Promise.resolve({}));
+  const resolvedSearchParams = await ((searchParams ?? Promise.resolve({})) as Promise<ProductsSearchParams>);
   const initialSearchTerm = typeof resolvedSearchParams.q === "string"
     ? resolvedSearchParams.q
     : "";

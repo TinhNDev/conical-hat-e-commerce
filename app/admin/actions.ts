@@ -1,5 +1,6 @@
 "use server";
 
+import { getSessionFromCookies } from "@/lib/auth";
 import { stripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -71,8 +72,17 @@ const revalidateCatalog = (productId?: string) => {
   }
 };
 
+const ensureAdminAccess = async () => {
+  const session = await getSessionFromCookies();
+
+  if (!session.isAdmin) {
+    throw new Error("Unauthorized.");
+  }
+};
+
 export async function createProductAction(formData: FormData) {
   try {
+    await ensureAdminAccess();
     const name = getRequiredString(formData, "name");
     const description = getOptionalString(formData, "description");
     const images = parseImages(getOptionalString(formData, "images"));
@@ -113,6 +123,7 @@ export async function updateProductAction(formData: FormData) {
   const productId = getRequiredString(formData, "productId");
 
   try {
+    await ensureAdminAccess();
     const name = getRequiredString(formData, "name");
     const description = getOptionalString(formData, "description");
     const images = parseImages(getOptionalString(formData, "images"));
@@ -168,6 +179,7 @@ export async function deleteProductAction(formData: FormData) {
   const productId = getRequiredString(formData, "productId");
 
   try {
+    await ensureAdminAccess();
     const product = await stripe.products.retrieve(productId);
     await stripe.products.del(productId);
     revalidateCatalog(productId);
@@ -192,6 +204,7 @@ export async function deleteProductAction(formData: FormData) {
 
 export async function createCustomerAction(formData: FormData) {
   try {
+    await ensureAdminAccess();
     const name = getRequiredString(formData, "name");
     const email = getRequiredString(formData, "email");
     const phone = getOptionalString(formData, "phone");
@@ -216,6 +229,7 @@ export async function updateCustomerAction(formData: FormData) {
   const customerId = getRequiredString(formData, "customerId");
 
   try {
+    await ensureAdminAccess();
     const name = getRequiredString(formData, "name");
     const email = getRequiredString(formData, "email");
     const phone = getOptionalString(formData, "phone");
@@ -240,6 +254,7 @@ export async function deleteCustomerAction(formData: FormData) {
   const customerId = getRequiredString(formData, "customerId");
 
   try {
+    await ensureAdminAccess();
     await stripe.customers.del(customerId);
     revalidatePath("/admin");
     redirect(toAdminUrl("success", `Deleted customer ${customerId}.`));

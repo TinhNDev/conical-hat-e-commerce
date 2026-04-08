@@ -3,16 +3,10 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { OrderRecord, ProductReview, UserProfile } from "@/lib/ecommerce";
-import {
-  AUTH_EMAIL_COOKIE,
-  AUTH_ROLE_COOKIE,
-  getRoleForEmail,
-  UserRole,
-} from "@/lib/auth-shared";
 
 interface AuthState {
   isAuthenticated: boolean;
-  rememberMe: boolean;
+  isLoading: boolean;
   user: UserProfile | null;
 }
 
@@ -21,11 +15,16 @@ interface AppStore {
   wishlist: string[];
   reviews: ProductReview[];
   orders: OrderRecord[];
-  login: (payload: { email: string; rememberMe: boolean }) => void;
-  register: (
-    payload: Omit<UserProfile, "role"> & { rememberMe: boolean }
-  ) => void;
-  logout: () => void;
+  refreshSession: () => Promise<void>;
+  login: (payload: { email: string; password: string; rememberMe: boolean }) => Promise<void>;
+  register: (payload: {
+    name: string;
+    email: string;
+    password: string;
+    studentId: string;
+    rememberMe: boolean;
+  }) => Promise<void>;
+  logout: () => Promise<void>;
   toggleWishlist: (productId: string) => void;
   addReview: (review: Omit<ProductReview, "id" | "createdAt">) => void;
   addOrder: (order: OrderRecord) => void;
@@ -33,29 +32,22 @@ interface AppStore {
 
 const defaultAuth: AuthState = {
   isAuthenticated: false,
-  rememberMe: false,
+  isLoading: true,
   user: null,
 };
 
-const setAuthCookies = (email: string, role: UserRole, rememberMe: boolean) => {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  const maxAge = rememberMe ? 60 * 60 * 24 * 30 : undefined;
-  const cookieSuffix = `; path=/; SameSite=Lax${maxAge ? `; max-age=${maxAge}` : ""}`;
-
-  document.cookie = `${AUTH_EMAIL_COOKIE}=${encodeURIComponent(email)}${cookieSuffix}`;
-  document.cookie = `${AUTH_ROLE_COOKIE}=${role}${cookieSuffix}`;
+type AuthResponse = {
+  user: UserProfile | null;
 };
 
-const clearAuthCookies = () => {
-  if (typeof document === "undefined") {
-    return;
+const parseResponse = async <T>(response: Response): Promise<T> => {
+  const payload = (await response.json()) as T & { error?: string };
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Request failed.");
   }
 
-  document.cookie = `${AUTH_EMAIL_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
-  document.cookie = `${AUTH_ROLE_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
+  return payload;
 };
 
 export const useAppStore = create<AppStore>()(
@@ -65,44 +57,77 @@ export const useAppStore = create<AppStore>()(
       wishlist: [],
       reviews: [],
       orders: [],
-      login: ({ email, rememberMe }) =>
-        set(() => {
-          const normalizedEmail = email.trim().toLowerCase();
-          const role = getRoleForEmail(normalizedEmail);
-          setAuthCookies(normalizedEmail, role, rememberMe);
-
-          return {
+      refreshSession: async () => {
+        try {
+          const payload = await parseResponse<AuthResponse>(await fetch("/api/auth/session"));
+          set({
             auth: {
-              isAuthenticated: true,
-              rememberMe,
-              user: {
-                name: normalizedEmail.split("@")[0],
-                email: normalizedEmail,
-                studentId: "MSSV-DEMO",
-                role,
-              },
+              isAuthenticated: Boolean(payload.user),
+              isLoading: false,
+              user: payload.user,
             },
-          };
-        }),
-      register: ({ name, email, studentId, rememberMe }) =>
-        set(() => {
-          const normalizedEmail = email.trim().toLowerCase();
-          const role = getRoleForEmail(normalizedEmail);
-          setAuthCookies(normalizedEmail, role, rememberMe);
-
-          return {
+          });
+        } catch {
+          set({
             auth: {
-              isAuthenticated: true,
-              rememberMe,
-              user: { name, email: normalizedEmail, studentId, role },
+              isAuthenticated: false,
+              isLoading: false,
+              user: null,
             },
-          };
-        }),
-      logout: () =>
-        set(() => {
-          clearAuthCookies();
-          return { auth: defaultAuth };
-        }),
+          });
+        }
+      },
+      login: async ({ email, password, rememberMe }) => {
+        const payload = await parseResponse<AuthResponse>(
+          await fetch("/api/auth/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email, password, rememberMe }),
+          })
+        );
+
+        set({
+          auth: {
+            isAuthenticated: Boolean(payload.user),
+            isLoading: false,
+            user: payload.user,
+          },
+        });
+      },
+      register: async ({ name, email, password, studentId, rememberMe }) => {
+        const payload = await parseResponse<AuthResponse>(
+          await fetch("/api/auth/register", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name, email, password, studentId, rememberMe }),
+          })
+        );
+
+        set({
+          auth: {
+            isAuthenticated: Boolean(payload.user),
+            isLoading: false,
+            user: payload.user,
+          },
+        });
+      },
+      logout: async () => {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+        });
+
+        set({
+          auth: {
+            isAuthenticated: false,
+            isLoading: false,
+            user: null,
+          },
+        });
+      },
       toggleWishlist: (productId) =>
         set((state) => ({
           wishlist: state.wishlist.includes(productId)
@@ -129,7 +154,6 @@ export const useAppStore = create<AppStore>()(
       name: "ecommerce-app-store",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        auth: state.auth.rememberMe ? state.auth : defaultAuth,
         wishlist: state.wishlist,
         reviews: state.reviews,
         orders: state.orders,

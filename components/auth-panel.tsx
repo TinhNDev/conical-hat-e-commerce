@@ -1,12 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "./ui/button";
 import { useAppStore } from "@/store/app-store";
-import { useToastStore } from "@/store/toast-store";
-import { getRoleForEmail } from "@/lib/auth-shared";
-import { syncRegisteredCustomer } from "@/app/register/actions";
 
 interface AuthPanelProps {
   mode: "login" | "register";
@@ -14,8 +11,10 @@ interface AuthPanelProps {
 
 export const AuthPanel = ({ mode }: AuthPanelProps) => {
   const router = useRouter();
-  const { login, register } = useAppStore();
-  const { addToast } = useToastStore();
+  const searchParams = useSearchParams();
+  const login = useAppStore((state) => state.login);
+  const register = useAppStore((state) => state.register);
+  const auth = useAppStore((state) => state.auth);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -25,111 +24,39 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
     rememberMe: false,
   });
   const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const rolePreview = form.email.trim() ? getRoleForEmail(form.email.trim()) : "customer";
 
   const onSubmit = async () => {
-    if (isSubmitting) {
-      return;
-    }
+    try {
+      setError("");
 
-    if (!form.email.trim() || !form.password.trim()) {
-      setError("Email and password are required.");
-      addToast({
-        title: "Form error",
-        description: "Email and password are required.",
-        variant: "error",
-      });
-      return;
-    }
+      if (mode === "register") {
+        if (form.password !== form.confirmPassword) {
+          setError("Password confirmation does not match.");
+          return;
+        }
 
-    if (!form.email.includes("@")) {
-      setError("Please enter a valid email address.");
-      addToast({
-        title: "Form error",
-        description: "Please enter a valid email address.",
-        variant: "error",
-      });
-      return;
-    }
-
-    if (mode === "register") {
-      if (!form.name.trim() || !form.studentId.trim()) {
-        setError("Name and student ID are required.");
-        addToast({
-          title: "Form error",
-          description: "Name and student ID are required.",
-          variant: "error",
-        });
-        return;
-      }
-
-      if (form.password.length < 6) {
-        setError("Password must be at least 6 characters.");
-        addToast({
-          title: "Form error",
-          description: "Password must be at least 6 characters.",
-          variant: "error",
-        });
-        return;
-      }
-
-      if (form.password !== form.confirmPassword) {
-        setError("Password confirmation does not match.");
-        addToast({
-          title: "Form error",
-          description: "Password confirmation does not match.",
-          variant: "error",
-        });
-        return;
-      }
-
-      try {
-        setIsSubmitting(true);
-        await syncRegisteredCustomer({
-          name: form.name.trim(),
-          email: form.email.trim(),
-          studentId: form.studentId.trim(),
+        await register({
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          studentId: form.studentId,
           rememberMe: form.rememberMe,
         });
-        register({
-          name: form.name.trim(),
-          email: form.email.trim(),
-          studentId: form.studentId.trim(),
+      } else {
+        await login({
+          email: form.email,
+          password: form.password,
           rememberMe: form.rememberMe,
         });
-      } catch (registrationError) {
-        const message =
-          registrationError instanceof Error
-            ? registrationError.message
-            : "Unable to create your Stripe customer profile.";
-        setError(message);
-        addToast({
-          title: "Registration error",
-          description: message,
-          variant: "error",
-        });
-        setIsSubmitting(false);
-        return;
       }
-    } else {
-      login({
-        email: form.email.trim(),
-        rememberMe: form.rememberMe,
-      });
-    }
 
-    setError("");
-    addToast({
-      title: mode === "login" ? "Login successful" : "Registration successful",
-      description:
-        mode === "login"
-          ? `You are now signed in as ${getRoleForEmail(form.email.trim())}.`
-          : `Your account has been created with ${getRoleForEmail(form.email.trim())} access.`,
-      variant: "success",
-    });
-    router.push(getRoleForEmail(form.email.trim()) === "admin" ? "/admin" : "/dashboard");
-    setIsSubmitting(false);
+      const nextRole = useAppStore.getState().auth.user?.role;
+      const redirectTarget = searchParams.get("redirect");
+      router.push(redirectTarget ?? (nextRole === "admin" ? "/admin" : "/dashboard"));
+      router.refresh();
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Unable to submit form.");
+    }
   };
 
   return (
@@ -138,16 +65,11 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
         {mode === "login" ? "Login" : "Register"}
       </p>
       <h1 className="mt-4 font-display text-4xl text-stone-950">
-        {mode === "login"
-          ? "Welcome back"
-          : "Create your shopper profile"}
+        {mode === "login" ? "Welcome back" : "Create your shopper profile"}
       </h1>
       <p className="mt-3 text-sm leading-7 text-stone-600">
-        Includes client-side validation, clear inline error messages, and a
-        remember me option stored locally for this demo project.
-      </p>
-      <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-500">
-        Current role for this email: {rolePreview}
+        Authentication is now handled by backend API routes, password hashing, and
+        signed HTTP-only session cookies.
       </p>
 
       <div className="mt-8 space-y-4">
@@ -156,9 +78,7 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
             <span className="text-sm font-medium text-stone-700">Full name</span>
             <input
               value={form.name}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, name: event.target.value }))
-              }
+              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
               className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none"
             />
           </label>
@@ -168,9 +88,7 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
           <span className="text-sm font-medium text-stone-700">Email</span>
           <input
             value={form.email}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, email: event.target.value }))
-            }
+            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
             className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none"
           />
         </label>
@@ -202,17 +120,12 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
 
         {mode === "register" ? (
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-stone-700">
-              Confirm password
-            </span>
+            <span className="text-sm font-medium text-stone-700">Confirm password</span>
             <input
               type="password"
               value={form.confirmPassword}
               onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  confirmPassword: event.target.value,
-                }))
+                setForm((current) => ({ ...current, confirmPassword: event.target.value }))
               }
               className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none"
             />
@@ -224,10 +137,7 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
             type="checkbox"
             checked={form.rememberMe}
             onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                rememberMe: event.target.checked,
-              }))
+              setForm((current) => ({ ...current, rememberMe: event.target.checked }))
             }
           />
           Remember me
@@ -237,10 +147,10 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
 
         <Button
           onClick={onSubmit}
-          disabled={isSubmitting}
+          disabled={auth.isLoading}
           className="w-full rounded-full bg-stone-950 py-6 text-sm uppercase tracking-[0.18em] hover:bg-stone-800"
         >
-          {isSubmitting ? "Processing..." : mode === "login" ? "Sign in" : "Create account"}
+          {auth.isLoading ? "Please wait" : mode === "login" ? "Sign in" : "Create account"}
         </Button>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { getSessionFromCookies } from "@/lib/auth-server";
+import { getSessionFromCookies } from "@/lib/auth";
 import { formatPrice } from "@/lib/ecommerce";
 import { stripe } from "@/lib/stripe";
 import Image from "next/image";
@@ -107,7 +107,7 @@ function ProductPreview({
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const session = await getSessionFromCookies();
 
-  if (!session.isAdmin) {
+  if (!session.isAdmin || !session.user) {
     redirect("/login?redirect=/admin");
   }
 
@@ -163,7 +163,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             <div className="flex flex-wrap gap-3 text-sm text-stone-700">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/75 px-4 py-2">
                 <Mail className="h-4 w-4" />
-                {session.email}
+                {session.user.email}
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/75 px-4 py-2">
                 <Sparkles className="h-4 w-4" />

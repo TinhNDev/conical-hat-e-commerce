@@ -1,20 +1,33 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { Button } from "./ui/button";
 import { formatPrice } from "@/lib/ecommerce";
 import { useAppStore } from "@/store/app-store";
 
 export const DashboardPanel = () => {
-  const { auth, wishlist, orders, logout } = useAppStore();
+  const { auth, wishlist, orders, logout, refreshSession } = useAppStore();
   const totalSpent = orders.reduce((sum, order) => sum + order.total, 0);
+
+  useEffect(() => {
+    if (auth.isLoading) {
+      void refreshSession();
+    }
+  }, [auth.isLoading, refreshSession]);
+
+  if (auth.isLoading) {
+    return (
+      <div className="rounded-[2rem] border border-dashed border-stone-300 bg-stone-50 px-6 py-14 text-center">
+        <h1 className="font-display text-4xl text-stone-950">Loading dashboard</h1>
+      </div>
+    );
+  }
 
   if (!auth.isAuthenticated || !auth.user) {
     return (
       <div className="rounded-[2rem] border border-dashed border-stone-300 bg-stone-50 px-6 py-14 text-center">
-        <h1 className="font-display text-4xl text-stone-950">
-          Dashboard locked
-        </h1>
+        <h1 className="font-display text-4xl text-stone-950">Dashboard locked</h1>
         <p className="mt-3 text-sm text-stone-600">
           Login or register to access the user dashboard and order history.
         </p>
@@ -35,7 +48,8 @@ export const DashboardPanel = () => {
           Welcome, {auth.user.name}
         </h1>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-stone-700">
-          This dashboard summarizes local account state, wishlist items, and order activity.
+          This dashboard summarizes your backend-authenticated account state, wishlist
+          items, and order activity.
         </p>
       </section>
 
@@ -63,14 +77,10 @@ export const DashboardPanel = () => {
           <h2 className="text-2xl font-semibold text-stone-950">Account snapshot</h2>
           <div className="mt-4 space-y-3 text-sm text-stone-700">
             <p>Email: {auth.user.email}</p>
-            <p>Remember me: {auth.rememberMe ? "Enabled" : "Disabled"}</p>
+            <p>Authenticated via backend session cookies.</p>
             <p>Orders placed: {orders.length}</p>
           </div>
-          <Button
-            onClick={logout}
-            variant="outline"
-            className="mt-6 rounded-full"
-          >
+          <Button onClick={() => void logout()} variant="outline" className="mt-6 rounded-full">
             Logout
           </Button>
         </div>

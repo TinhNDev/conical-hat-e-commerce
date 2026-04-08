@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { formatPrice, OrderRecord, PaymentMethod } from "@/lib/ecommerce";
@@ -32,6 +32,14 @@ export const CheckoutForm = () => {
   });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setForm((current) => ({
+      ...current,
+      fullName: current.fullName || auth.user?.name || "",
+      email: current.email || auth.user?.email || "",
+    }));
+  }, [auth.user?.email, auth.user?.name]);
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),

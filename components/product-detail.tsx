@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Stripe from "stripe";
 import { Heart } from "lucide-react";
 import { Button } from "./ui/button";
@@ -10,7 +11,7 @@ import { RatingStars } from "./rating-stars";
 import {
   enrichProduct,
   formatPrice,
-  getProductReviews,
+  ProductReview,
 } from "@/lib/ecommerce";
 import { useAppStore } from "@/store/app-store";
 import { useCartStore } from "@/store/cart-store";
@@ -19,24 +20,22 @@ import { useToastStore } from "@/store/toast-store";
 interface Props {
   product: Stripe.Product;
   relatedProducts: Stripe.Product[];
+  initialReviews: ProductReview[];
 }
 
-export const ProductDetail = ({ product, relatedProducts }: Props) => {
+export const ProductDetail = ({ product, relatedProducts, initialReviews }: Props) => {
+  const router = useRouter();
   const details = enrichProduct(product);
   const { items, addItem, updateQuantity } = useCartStore();
-  const { wishlist, toggleWishlist, reviews, addReview } = useAppStore();
+  const { auth, wishlist, toggleWishlist } = useAppStore();
   const { addToast } = useToastStore();
   const [activeImage, setActiveImage] = useState(product.images?.[0] ?? null);
-  const [reviewAuthor, setReviewAuthor] = useState("");
   const [reviewComment, setReviewComment] = useState("");
   const [reviewRating, setReviewRating] = useState("5");
   const [reviewError, setReviewError] = useState("");
+  const [productReviews, setProductReviews] = useState(initialReviews);
   const cartItem = items.find((item) => item.id === product.id);
   const quantity = cartItem?.quantity ?? 0;
-  const productReviews = useMemo(
-    () => getProductReviews(product.id, reviews),
-    [product.id, reviews]
-  );
   const isWishlisted = wishlist.includes(product.id);
 
   const onAddItem = () => {
@@ -55,26 +54,66 @@ export const ProductDetail = ({ product, relatedProducts }: Props) => {
   };
 
   const onSubmitReview = () => {
-    if (!reviewAuthor.trim() || !reviewComment.trim()) {
-      setReviewError("Name and review text are required.");
+    if (!auth.isAuthenticated || !auth.user) {
+      setReviewError("Login is required before submitting a review.");
+      addToast({
+        title: "Login required",
+        description: "Sign in to submit a review under your account.",
+        variant: "error",
+      });
+      router.push(`/login?redirect=/products/${product.id}`);
+      return;
+    }
+
+    if (!reviewComment.trim()) {
+      setReviewError("Review text is required.");
       return;
     }
 
     setReviewError("");
-    addReview({
-      productId: product.id,
-      author: reviewAuthor.trim(),
-      comment: reviewComment.trim(),
-      rating: Number(reviewRating),
-    });
-    addToast({
-      title: "Review submitted",
-      description: "Your rating and comment were added successfully.",
-      variant: "success",
-    });
-    setReviewAuthor("");
-    setReviewComment("");
-    setReviewRating("5");
+    fetch(`/api/products/${product.id}/reviews`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        rating: Number(reviewRating),
+        comment: reviewComment.trim(),
+      }),
+    })
+      .then(async (response) => {
+        const payload = (await response.json()) as { reviews?: ProductReview[]; error?: string };
+
+        if (!response.ok || !payload.reviews) {
+          throw new Error(payload.error ?? "Unable to submit review.");
+        }
+
+        setProductReviews(payload.reviews);
+        addToast({
+          title: "Review submitted",
+          description: "Your rating and comment were added successfully.",
+          variant: "success",
+        });
+        setReviewComment("");
+        setReviewRating("5");
+      })
+      .catch((error: unknown) => {
+        setReviewError(error instanceof Error ? error.message : "Unable to submit review.");
+      });
+  };
+
+  const onToggleWishlist = () => {
+    if (!auth.isAuthenticated) {
+      addToast({
+        title: "Login required",
+        description: "Sign in to save items to your wishlist.",
+        variant: "error",
+      });
+      router.push(`/login?redirect=/products/${product.id}`);
+      return;
+    }
+
+    void toggleWishlist(product.id);
   };
 
   return (
@@ -134,7 +173,7 @@ export const ProductDetail = ({ product, relatedProducts }: Props) => {
             </div>
             <button
               type="button"
-              onClick={() => toggleWishlist(product.id)}
+              onClick={onToggleWishlist}
               className="rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-500"
             >
               <span className="inline-flex items-center gap-2">
@@ -242,12 +281,9 @@ export const ProductDetail = ({ product, relatedProducts }: Props) => {
             Leave a review
           </h2>
           <div className="mt-6 space-y-4">
-            <input
-              value={reviewAuthor}
-              onChange={(event) => setReviewAuthor(event.target.value)}
-              placeholder="Your name"
-              className="w-full rounded-2xl border border-stone-700 bg-stone-900 px-4 py-3 text-sm text-white outline-none"
-            />
+            <div className="rounded-2xl border border-stone-700 bg-stone-900 px-4 py-3 text-sm text-stone-200">
+              {auth.user ? `Reviewing as ${auth.user.name}` : "Login required to review"}
+            </div>
             <select
               value={reviewRating}
               onChange={(event) => setReviewRating(event.target.value)}

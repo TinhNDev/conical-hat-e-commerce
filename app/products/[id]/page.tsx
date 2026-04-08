@@ -1,5 +1,6 @@
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ProductDetail } from "@/components/product-detail";
+import { getProductReviewsByStripeId } from "@/lib/account-data";
 import { getRelatedProducts } from "@/lib/ecommerce";
 import { stripe } from "@/lib/stripe";
 
@@ -19,6 +20,7 @@ export default async function ProductPage({
     limit: 12,
   });
   const relatedProducts = getRelatedProducts(product, products.data);
+  const reviews = await getProductReviewsByStripeId(id);
 
   const plainProduct = JSON.parse(JSON.stringify(product));
   const plainRelatedProducts = JSON.parse(JSON.stringify(relatedProducts));
@@ -35,6 +37,7 @@ export default async function ProductPage({
       <ProductDetail
         product={plainProduct}
         relatedProducts={plainRelatedProducts}
+        initialReviews={reviews}
       />
     </div>
   );

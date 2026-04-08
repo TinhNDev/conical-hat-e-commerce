@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
-import { formatPrice, OrderRecord, PaymentMethod } from "@/lib/ecommerce";
+import { formatPrice, PaymentMethod } from "@/lib/ecommerce";
 import { useAppStore } from "@/store/app-store";
 import { useCartStore } from "@/store/cart-store";
 import { useToastStore } from "@/store/toast-store";
@@ -49,6 +49,17 @@ export const CheckoutForm = () => {
   const total = subtotal - discountAmount;
 
   const onSubmit = () => {
+    if (!auth.isAuthenticated || !auth.user) {
+      setError("Please login before placing an order.");
+      addToast({
+        title: "Login required",
+        description: "Sign in to continue to checkout.",
+        variant: "error",
+      });
+      router.push("/login?redirect=/checkout");
+      return;
+    }
+
     const requiredFields = [
       form.fullName,
       form.email,
@@ -81,26 +92,33 @@ export const CheckoutForm = () => {
     }
 
     setError("");
-    const order: OrderRecord = {
-      id: `ORD-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      items: items.map((item) => ({ ...item })),
-      subtotal,
+    addOrder({
+      items,
       discountAmount,
       total,
       paymentMethod,
       shippingAddress: form,
-      status: paymentMethod === "card" ? "Paid" : "Processing",
-    };
+    })
+      .then((order) => {
+        clearCart();
+        addToast({
+          title: "Order placed",
+          description: `Order ${order.id} was created successfully.`,
+          variant: "success",
+        });
+        router.push(`/success?orderId=${order.id}`);
+      })
+      .catch((submissionError: unknown) => {
+        const message =
+          submissionError instanceof Error ? submissionError.message : "Unable to place order.";
 
-    addOrder(order);
-    clearCart();
-    addToast({
-      title: "Order placed",
-      description: `Order ${order.id} was created successfully.`,
-      variant: "success",
-    });
-    router.push(`/success?orderId=${order.id}`);
+        setError(message);
+        addToast({
+          title: "Checkout failed",
+          description: message,
+          variant: "error",
+        });
+      });
   };
 
   if (!items.length) {

@@ -2,7 +2,8 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { OrderRecord, ProductReview, UserProfile } from "@/lib/ecommerce";
+import { OrderRecord, UserProfile, ShippingAddress, PaymentMethod } from "@/lib/ecommerce";
+import { CartItem } from "./cart-store";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -12,8 +13,8 @@ interface AuthState {
 
 interface AppStore {
   auth: AuthState;
+  ownerKey: string | null;
   wishlist: string[];
-  reviews: ProductReview[];
   orders: OrderRecord[];
   refreshSession: () => Promise<void>;
   login: (payload: { email: string; password: string; rememberMe: boolean }) => Promise<void>;
@@ -25,9 +26,14 @@ interface AppStore {
     rememberMe: boolean;
   }) => Promise<void>;
   logout: () => Promise<void>;
-  toggleWishlist: (productId: string) => void;
-  addReview: (review: Omit<ProductReview, "id" | "createdAt">) => void;
-  addOrder: (order: OrderRecord) => void;
+  toggleWishlist: (productId: string) => Promise<void>;
+  addOrder: (payload: {
+    items: CartItem[];
+    discountAmount: number;
+    total: number;
+    paymentMethod: PaymentMethod;
+    shippingAddress: ShippingAddress;
+  }) => Promise<OrderRecord>;
 }
 
 const defaultAuth: AuthState = {
@@ -38,6 +44,11 @@ const defaultAuth: AuthState = {
 
 type AuthResponse = {
   user: UserProfile | null;
+};
+
+type AccountDataResponse = {
+  wishlist: string[];
+  orders: OrderRecord[];
 };
 
 const parseResponse = async <T>(response: Response): Promise<T> => {
@@ -54,18 +65,32 @@ export const useAppStore = create<AppStore>()(
   persist(
     (set) => ({
       auth: defaultAuth,
+      ownerKey: null,
       wishlist: [],
-      reviews: [],
       orders: [],
       refreshSession: async () => {
         try {
           const payload = await parseResponse<AuthResponse>(await fetch("/api/auth/session"));
-          set({
-            auth: {
-              isAuthenticated: Boolean(payload.user),
-              isLoading: false,
-              user: payload.user,
-            },
+          const accountData = payload.user
+            ? await parseResponse<AccountDataResponse>(
+                await fetch("/api/account/data", {
+                  cache: "no-store",
+                })
+              )
+            : { wishlist: [], orders: [] };
+          set(() => {
+            const nextOwnerKey = payload.user?.email ?? null;
+
+            return {
+              auth: {
+                isAuthenticated: Boolean(payload.user),
+                isLoading: false,
+                user: payload.user,
+              },
+              ownerKey: nextOwnerKey,
+              wishlist: accountData.wishlist,
+              orders: accountData.orders,
+            };
           });
         } catch {
           set({
@@ -74,6 +99,9 @@ export const useAppStore = create<AppStore>()(
               isLoading: false,
               user: null,
             },
+            ownerKey: null,
+            wishlist: [],
+            orders: [],
           });
         }
       },
@@ -88,13 +116,24 @@ export const useAppStore = create<AppStore>()(
           })
         );
 
-        set({
-          auth: {
-            isAuthenticated: Boolean(payload.user),
-            isLoading: false,
-            user: payload.user,
-          },
-        });
+        const accountData = payload.user
+          ? await parseResponse<AccountDataResponse>(
+              await fetch("/api/account/data", {
+                cache: "no-store",
+              })
+            )
+          : { wishlist: [], orders: [] };
+
+        set(() => ({
+            auth: {
+              isAuthenticated: Boolean(payload.user),
+              isLoading: false,
+              user: payload.user,
+            },
+            ownerKey: payload.user?.email ?? null,
+            wishlist: accountData.wishlist,
+            orders: accountData.orders,
+          }));
       },
       register: async ({ name, email, password, studentId, rememberMe }) => {
         const payload = await parseResponse<AuthResponse>(
@@ -107,13 +146,24 @@ export const useAppStore = create<AppStore>()(
           })
         );
 
-        set({
-          auth: {
-            isAuthenticated: Boolean(payload.user),
-            isLoading: false,
-            user: payload.user,
-          },
-        });
+        const accountData = payload.user
+          ? await parseResponse<AccountDataResponse>(
+              await fetch("/api/account/data", {
+                cache: "no-store",
+              })
+            )
+          : { wishlist: [], orders: [] };
+
+        set(() => ({
+            auth: {
+              isAuthenticated: Boolean(payload.user),
+              isLoading: false,
+              user: payload.user,
+            },
+            ownerKey: payload.user?.email ?? null,
+            wishlist: accountData.wishlist,
+            orders: accountData.orders,
+          }));
       },
       logout: async () => {
         await fetch("/api/auth/logout", {
@@ -126,37 +176,56 @@ export const useAppStore = create<AppStore>()(
             isLoading: false,
             user: null,
           },
+          ownerKey: null,
+          wishlist: [],
+          orders: [],
         });
       },
-      toggleWishlist: (productId) =>
-        set((state) => ({
-          wishlist: state.wishlist.includes(productId)
-            ? state.wishlist.filter((id) => id !== productId)
-            : [...state.wishlist, productId],
-        })),
-      addReview: (review) =>
-        set((state) => ({
-          reviews: [
-            {
-              ...review,
-              id: `${review.productId}-${Date.now()}`,
-              createdAt: new Date().toISOString(),
+      toggleWishlist: async (productId) => {
+        const payload = await parseResponse<AccountDataResponse>(
+          await fetch("/api/account/wishlist", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
-            ...state.reviews,
-          ],
-        })),
-      addOrder: (order) =>
+            body: JSON.stringify({ productId }),
+          })
+        );
+
+        set({
+          wishlist: payload.wishlist,
+          orders: payload.orders,
+        });
+      },
+      addOrder: async ({ items, discountAmount, total, paymentMethod, shippingAddress }) => {
+        const payload = await parseResponse<{ order: OrderRecord }>(
+          await fetch("/api/account/orders", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              items,
+              discountAmount,
+              total,
+              paymentMethod,
+              shippingAddress,
+            }),
+          })
+        );
+
         set((state) => ({
-          orders: [order, ...state.orders],
-        })),
+          orders: [payload.order, ...state.orders],
+        }));
+
+        return payload.order;
+      },
     }),
     {
       name: "ecommerce-app-store",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        wishlist: state.wishlist,
-        reviews: state.reviews,
-        orders: state.orders,
+        ownerKey: state.ownerKey,
       }),
     }
   )

@@ -2,22 +2,40 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Stripe from "stripe";
 import { Heart } from "lucide-react";
 import { Button } from "./ui/button";
 import { RatingStars } from "./rating-stars";
 import { enrichProduct, formatPrice } from "@/lib/ecommerce";
 import { useAppStore } from "@/store/app-store";
+import { useToastStore } from "@/store/toast-store";
 
 interface Props {
   product: Stripe.Product;
 }
 
 export const ProductCard = ({ product }: Props) => {
+  const router = useRouter();
   const details = enrichProduct(product);
-  const { wishlist, toggleWishlist } = useAppStore();
+  const { auth, wishlist, toggleWishlist } = useAppStore();
+  const { addToast } = useToastStore();
   const isWishlisted = wishlist.includes(product.id);
   const image = product.images?.[0];
+
+  const onToggleWishlist = () => {
+    if (!auth.isAuthenticated) {
+      addToast({
+        title: "Login required",
+        description: "Sign in to save items to your wishlist.",
+        variant: "error",
+      });
+      router.push(`/login?redirect=/products/${product.id}`);
+      return;
+    }
+
+    void toggleWishlist(product.id);
+  };
 
   return (
     <div className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_64px_rgba(15,23,42,0.12)]">
@@ -60,7 +78,7 @@ export const ProductCard = ({ product }: Props) => {
           </div>
           <button
             type="button"
-            onClick={() => toggleWishlist(product.id)}
+            onClick={onToggleWishlist}
             className="rounded-full border border-stone-200 p-2 text-stone-700 transition hover:border-stone-400 hover:text-stone-950"
             aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
           >

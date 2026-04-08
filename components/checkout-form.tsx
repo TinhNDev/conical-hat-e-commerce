@@ -1,0 +1,229 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "./ui/button";
+import { formatPrice, OrderRecord, PaymentMethod } from "@/lib/ecommerce";
+import { useAppStore } from "@/store/app-store";
+import { useCartStore } from "@/store/cart-store";
+import { useToastStore } from "@/store/toast-store";
+
+const initialForm = {
+  fullName: "",
+  email: "",
+  phone: "",
+  addressLine1: "",
+  addressLine2: "",
+  city: "",
+  state: "",
+  postalCode: "",
+  country: "",
+};
+
+export const CheckoutForm = () => {
+  const router = useRouter();
+  const { items, discountPercentage, clearCart } = useCartStore();
+  const { addOrder, auth } = useAppStore();
+  const { addToast } = useToastStore();
+  const [form, setForm] = useState({
+    ...initialForm,
+    fullName: auth.user?.name ?? "",
+    email: auth.user?.email ?? "",
+  });
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [error, setError] = useState("");
+
+  const subtotal = useMemo(
+    () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [items]
+  );
+  const discountAmount = Math.round((subtotal * discountPercentage) / 100);
+  const total = subtotal - discountAmount;
+
+  const onSubmit = () => {
+    const requiredFields = [
+      form.fullName,
+      form.email,
+      form.phone,
+      form.addressLine1,
+      form.city,
+      form.state,
+      form.postalCode,
+      form.country,
+    ];
+
+    if (!items.length) {
+      setError("Your cart is empty.");
+      addToast({
+        title: "Checkout blocked",
+        description: "Your cart is empty.",
+        variant: "error",
+      });
+      return;
+    }
+
+    if (requiredFields.some((value) => !value.trim())) {
+      setError("Please complete the shipping form before placing the order.");
+      addToast({
+        title: "Form incomplete",
+        description: "Please complete the shipping form before placing the order.",
+        variant: "error",
+      });
+      return;
+    }
+
+    setError("");
+    const order: OrderRecord = {
+      id: `ORD-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      items: items.map((item) => ({ ...item })),
+      subtotal,
+      discountAmount,
+      total,
+      paymentMethod,
+      shippingAddress: form,
+      status: paymentMethod === "card" ? "Paid" : "Processing",
+    };
+
+    addOrder(order);
+    clearCart();
+    addToast({
+      title: "Order placed",
+      description: `Order ${order.id} was created successfully.`,
+      variant: "success",
+    });
+    router.push(`/success?orderId=${order.id}`);
+  };
+
+  if (!items.length) {
+    return (
+      <div className="rounded-[2rem] border border-dashed border-stone-300 bg-stone-50 px-6 py-14 text-center">
+        <h1 className="font-display text-4xl text-stone-950">
+          Checkout is waiting on your cart
+        </h1>
+        <p className="mt-3 text-sm text-stone-600">
+          Add products first, then come back here to complete shipping and payment.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="space-y-6">
+        <div className="rounded-[1.75rem] border border-stone-200 bg-white p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
+            Shipping address
+          </p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {[
+              ["fullName", "Full name"],
+              ["email", "Email"],
+              ["phone", "Phone"],
+              ["addressLine1", "Address line 1"],
+              ["addressLine2", "Address line 2"],
+              ["city", "City"],
+              ["state", "State / Province"],
+              ["postalCode", "Postal code"],
+              ["country", "Country"],
+            ].map(([key, label]) => (
+              <label
+                key={key}
+                className={`space-y-2 ${key === "addressLine1" || key === "addressLine2" ? "sm:col-span-2" : ""}`}
+              >
+                <span className="text-sm font-medium text-stone-700">{label}</span>
+                <input
+                  value={form[key as keyof typeof form]}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      [key]: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none"
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[1.75rem] border border-stone-200 bg-[linear-gradient(180deg,#faf7f2_0%,#ffffff_100%)] p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
+            Payment method
+          </p>
+          <div className="mt-5 space-y-3">
+            {[
+              { value: "card", label: "Card payment", note: "Instant confirmation for demo orders." },
+              { value: "cod", label: "Cash on delivery", note: "Useful for testing alternate checkout paths." },
+              { value: "bank", label: "Bank transfer", note: "Marks the order as processing." },
+            ].map((option) => (
+              <label
+                key={option.value}
+                className={`flex cursor-pointer items-start gap-3 rounded-[1.25rem] border px-4 py-4 ${
+                  paymentMethod === option.value
+                    ? "border-stone-950 bg-stone-950 text-white"
+                    : "border-stone-200 bg-white text-stone-900"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value={option.value}
+                  checked={paymentMethod === option.value}
+                  onChange={() => setPaymentMethod(option.value as PaymentMethod)}
+                  className="mt-1"
+                />
+                <div>
+                  <p className="font-semibold">{option.label}</p>
+                  <p className="text-sm opacity-80">{option.note}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <aside className="rounded-[1.75rem] border border-stone-200 bg-stone-950 p-6 text-stone-50">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-400">
+          Order summary
+        </p>
+        <div className="mt-5 space-y-4">
+          {items.map((item) => (
+            <div key={item.id} className="flex items-center justify-between gap-3 text-sm">
+              <div>
+                <p className="font-medium">{item.name}</p>
+                <p className="text-stone-400">Qty {item.quantity}</p>
+              </div>
+              <span>{formatPrice(item.price * item.quantity)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 space-y-3 border-t border-stone-800 pt-4 text-sm">
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span>{formatPrice(subtotal)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Discount</span>
+            <span>-{formatPrice(discountAmount)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Selected payment</span>
+            <span className="uppercase">{paymentMethod}</span>
+          </div>
+          <div className="flex justify-between text-lg font-semibold">
+            <span>Total</span>
+            <span>{formatPrice(total)}</span>
+          </div>
+        </div>
+        {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
+        <Button
+          onClick={onSubmit}
+          className="mt-6 w-full rounded-full bg-amber-200 text-stone-950 hover:bg-amber-100"
+        >
+          Place order
+        </Button>
+      </aside>
+    </div>
+  );
+};

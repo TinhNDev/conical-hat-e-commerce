@@ -1,6 +1,6 @@
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ProductList } from "@/components/product-list";
-import { stripe } from "@/lib/stripe";
+import { getCatalogProducts } from "@/lib/catalog-data";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +19,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const initialSearchTerm = typeof resolvedSearchParams.q === "string"
     ? resolvedSearchParams.q
     : "";
-  const products = await stripe.products.list({
-    expand: ["data.default_price"],
-    limit: 18,
-  });
-  const plainProducts = JSON.parse(JSON.stringify(products.data));
+  const products = await getCatalogProducts(18);
 
   return (
     <div className="space-y-8 pb-10">
@@ -45,7 +41,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           to narrow the catalog without losing visual clarity.
         </p>
       </section>
-      <ProductList products={plainProducts} initialSearchTerm={initialSearchTerm} />
+      <ProductList products={products} initialSearchTerm={initialSearchTerm} />
     </div>
   );
 }

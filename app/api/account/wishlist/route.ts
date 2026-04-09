@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { toggleWishlistItem } from "@/lib/account-data";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {

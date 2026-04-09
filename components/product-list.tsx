@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useState, useDeferredValue, startTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import Stripe from "stripe";
 import { ProductCard } from "./product-card";
-import { enrichProduct } from "@/lib/ecommerce";
+import { CatalogProduct, enrichProduct } from "@/lib/ecommerce";
 
 interface Props {
-  products: Stripe.Product[];
+  products: CatalogProduct[];
   initialSearchTerm?: string;
 }
 

@@ -1,4 +1,5 @@
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { AdminCreateProductForm } from "@/components/admin-create-product-form";
 import { getAdminCustomers, getAdminProducts, syncAdminDataFromStripe } from "@/lib/admin-data";
 import { getSessionFromCookies } from "@/lib/auth";
 import Image from "next/image";
@@ -6,7 +7,6 @@ import Link from "next/link";
 import { ArrowRight, Boxes, CircleUserRound, CreditCard, Mail, Package2, Phone, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
 import {
   createCustomerAction,
-  createProductAction,
   deleteCustomerAction,
   deleteProductAction,
   updateCustomerAction,
@@ -49,6 +49,7 @@ type AdminPageProps = {
     type?: string;
     message?: string;
     view?: string;
+    productTab?: string;
   }>;
 };
 
@@ -56,6 +57,7 @@ type AdminSearchParams = {
   type?: string;
   message?: string;
   view?: string;
+  productTab?: string;
 };
 
 function AdminStatCard({
@@ -122,12 +124,16 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   }
 
   const resolvedSearchParams = await ((searchParams ?? Promise.resolve({})) as Promise<AdminSearchParams>);
-  await syncAdminDataFromStripe();
-  const [products, customers] = await Promise.all([getAdminProducts(), getAdminCustomers()]);
-
+  const selectedView = resolvedSearchParams.view === "customers" ? "customers" : "products";
+  const selectedProductTab = resolvedSearchParams.productTab === "catalog" ? "catalog" : "create";
   const feedbackType = resolvedSearchParams.type === "error" ? "error" : "success";
   const feedbackMessage = resolvedSearchParams.message;
-  const selectedView = resolvedSearchParams.view === "customers" ? "customers" : "products";
+
+  if (selectedView === "customers") {
+    await syncAdminDataFromStripe();
+  }
+
+  const [products, customers] = await Promise.all([getAdminProducts(), getAdminCustomers()]);
   const activeProductRecords = products.filter((product) => product.status === "active");
   const archivedProductRecords = products.filter((product) => product.status === "archived");
   const activeProducts = activeProductRecords.length;
@@ -152,7 +158,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-stone-600">
-                Stripe admin
+                Commerce admin
               </p>
               <h1 className="mt-4 max-w-3xl font-display text-5xl leading-none text-stone-950">
                 Professional control over catalog, pricing, and customer records
@@ -170,7 +176,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/75 px-4 py-2">
                 <Sparkles className="h-4 w-4" />
-                Prisma + Stripe sync
+                PostgreSQL catalog + hosted media
               </div>
             </div>
           </div>
@@ -204,7 +210,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
       <div className="flex flex-wrap gap-3">
         <Link
-          href="/admin?view=products"
+          href={`/admin?view=products&productTab=${selectedProductTab}`}
           className={`inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-medium transition ${
             selectedView === "products"
               ? "bg-stone-950 text-white dark:bg-stone-100 dark:text-stone-950"
@@ -244,59 +250,41 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <Package2 className="h-5 w-5" />
             </div>
           </div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/admin?view=products&productTab=create"
+              className={`inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-medium transition ${
+                selectedProductTab === "create"
+                  ? "bg-stone-950 text-white dark:bg-stone-100 dark:text-stone-950"
+                  : "border border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:hover:bg-stone-900"
+              }`}
+            >
+              <Package2 className="h-4 w-4" />
+              Create Product
+            </Link>
+            <Link
+              href="/admin?view=products&productTab=catalog"
+              className={`inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-medium transition ${
+                selectedProductTab === "catalog"
+                  ? "bg-stone-950 text-white dark:bg-stone-100 dark:text-stone-950"
+                  : "border border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:hover:bg-stone-900"
+              }`}
+            >
+              <Boxes className="h-4 w-4" />
+              Product Catalog
+            </Link>
+          </div>
 
-          <form action={createProductAction} className={formShellClassName}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-semibold text-stone-950">Create product</h3>
-                <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-                  Add a new product record in your database and sync it to Stripe for checkout.
-                </p>
-              </div>
-              <div className="hidden rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 shadow-sm md:block dark:bg-stone-950 dark:text-stone-300">
-                New entry
-              </div>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className={labelClassName}>
-                Name
-                <input name="name" required className={inputClassName} placeholder="Lacquer bowl" />
-              </label>
-              <label className={labelClassName}>
-                Price
-                <input name="price" type="number" min="0" step="0.01" className={inputClassName} placeholder="49.00" />
-              </label>
-              <label className={labelClassName}>
-                Currency
-                <input name="currency" defaultValue="usd" className={inputClassName} placeholder="usd" />
-              </label>
-              <label className={`${labelClassName} flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 dark:border-stone-700 dark:bg-stone-950`}>
-                <input name="active" type="checkbox" defaultChecked className="h-4 w-4 rounded border-stone-300" />
-                Active in storefront
-              </label>
-            </div>
-            <label className={labelClassName}>
-              Description
-              <textarea name="description" rows={4} className={inputClassName} placeholder="Short product summary for the storefront." />
-            </label>
-            <label className={labelClassName}>
-              Images
-              <input
-                name="images"
-                className={inputClassName}
-                placeholder="https://example.com/image-1.jpg, https://example.com/image-2.jpg"
-              />
-            </label>
-            <label className={labelClassName}>
-              Metadata JSON
-              <textarea name="metadata" rows={3} className={inputClassName} placeholder='{"category":"Studio Picks","featured":"true"}' />
-            </label>
-            <button className={primaryButtonClassName}>
-              Create product
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </form>
+          {selectedProductTab === "create" ? (
+          <AdminCreateProductForm
+            formClassName={formShellClassName}
+            labelClassName={labelClassName}
+            inputClassName={inputClassName}
+            primaryButtonClassName={primaryButtonClassName}
+          />
+          ) : null}
 
+          {selectedProductTab === "catalog" ? (
           <div className={collectionShellClassName}>
             <div className="flex items-center justify-between gap-3 border-b border-stone-200 pb-4 dark:border-stone-700">
               <div>
@@ -326,7 +314,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         <div className="space-y-3">
                           <h3 className="text-xl font-semibold text-stone-950">{product.name}</h3>
                           <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                            {product.stripeProductId ?? product.id}
+                            {product.id}
                           </p>
                           <div className="flex flex-wrap gap-2">
                             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-900 dark:text-stone-300">
@@ -358,6 +346,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
                       <form action={updateProductAction} className="mt-5 space-y-4 rounded-[1.5rem] border border-stone-200/80 bg-stone-50/70 p-4 dark:border-stone-700 dark:bg-stone-900/40">
                         <input type="hidden" name="productId" value={product.id} />
+                        <input type="hidden" name="existingImages" value={product.images.map((image) => image.url).join(",")} />
                         <div className="grid gap-4 md:grid-cols-2">
                           <label className={labelClassName}>
                             Name
@@ -397,10 +386,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           />
                         </label>
                         <label className={labelClassName}>
-                          Images
+                          Replace images
                           <input
-                            name="images"
-                            defaultValue={product.images.map((image) => image.url).join(", ")}
+                            name="imageFiles"
+                            type="file"
+                            accept="image/*"
+                            multiple
                             className={inputClassName}
                           />
                         </label>
@@ -418,7 +409,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                             Save changes
                           </button>
                           <span className="inline-flex items-center rounded-full bg-white px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 dark:bg-stone-950 dark:text-stone-300">
-                            Database record stays in sync with Stripe pricing
+                            Uploading new files replaces the current product gallery
                           </span>
                         </div>
                       </form>
@@ -437,8 +428,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             })}
             </div>
           </div>
+          ) : null}
 
-          {archivedProductRecords.length ? (
+          {selectedProductTab === "catalog" && archivedProductRecords.length ? (
             <div className={collectionShellClassName}>
               <div className="flex items-center justify-between gap-3 border-b border-stone-200 pb-4 dark:border-stone-700">
                 <div>
@@ -446,7 +438,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     Archived products
                   </p>
                   <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-                    Stripe archives products with prices instead of permanently deleting them.
+                    Archived items stay in PostgreSQL and can be reactivated later.
                   </p>
                 </div>
                 <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-950 dark:text-stone-300">
@@ -468,7 +460,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           <div>
                             <h3 className="text-xl font-semibold text-stone-950">{product.name}</h3>
                             <p className="mt-1 text-xs uppercase tracking-[0.18em] text-stone-500">
-                              {product.stripeProductId ?? product.id}
+                              {product.id}
                             </p>
                           </div>
                           <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-900 dark:text-stone-300">
@@ -481,14 +473,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         </p>
                         <form action={updateProductAction} className="mt-5 space-y-4 rounded-[1.5rem] border border-stone-200/80 bg-stone-50/70 p-4 dark:border-stone-700 dark:bg-stone-900/40">
                           <input type="hidden" name="productId" value={product.id} />
+                          <input type="hidden" name="existingImages" value={product.images.map((image) => image.url).join(",")} />
                           <div className="grid gap-4 md:grid-cols-2">
                             <label className={labelClassName}>
                               Name
                               <input name="name" required defaultValue={product.name} className={inputClassName} />
                             </label>
                             <label className={labelClassName}>
-                              Images
-                              <input name="images" defaultValue={product.images.map((image) => image.url).join(", ")} className={inputClassName} />
+                              Replace images
+                              <input name="imageFiles" type="file" accept="image/*" multiple className={inputClassName} />
                             </label>
                             <label className={labelClassName}>
                               Currency

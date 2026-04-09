@@ -1,6 +1,19 @@
-import type Stripe from "stripe";
-
 export type PaymentMethod = "card" | "cod" | "bank";
+
+export interface CatalogPrice {
+  unit_amount: number | null;
+  currency: string;
+}
+
+export interface CatalogProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  images: string[];
+  default_price: CatalogPrice | null;
+  metadata: Record<string, string>;
+  active: boolean;
+}
 
 export interface ProductReview {
   id: string;
@@ -145,15 +158,15 @@ export const blogPosts = [
 export const faqs = [
   {
     question: "How do you handle payments?",
-    answer: "Stripe powers card checkout. Local demo orders can also be placed with cash on delivery or bank transfer selection.",
+    answer: "Stripe powers card checkout. Cash on delivery and bank transfer are also available as checkout payment options.",
   },
   {
     question: "Can I save products for later?",
-    answer: "Yes. Wishlist state is stored locally so shoppers can return and compare items later.",
+    answer: "Yes. Wishlist data is tied to the authenticated account so shoppers can return and compare items later.",
   },
   {
     question: "Is this backed by a database?",
-    answer: "This project stays lightweight and uses Stripe for catalog data plus local persisted state for demo user features.",
+    answer: "Yes. Product data is stored in PostgreSQL, and product image URLs are stored there after upload to a hosted media service.",
   },
 ];
 
@@ -209,25 +222,25 @@ export const highlightText = (text: string, query: string) => {
   });
 };
 
-export const getProductCategory = (product: Stripe.Product) => {
+export const getProductCategory = (product: CatalogProduct) => {
   const index = hashString(product.id) % CATEGORY_PRESETS.length;
   return CATEGORY_PRESETS[index];
 };
 
-export const getProductRating = (product: Stripe.Product) => {
+export const getProductRating = (product: CatalogProduct) => {
   const base = 3.8 + (hashString(product.id) % 12) / 10;
   return Number(Math.min(base, 4.9).toFixed(1));
 };
 
-export const getProductReviewCount = (product: Stripe.Product) =>
+export const getProductReviewCount = (product: CatalogProduct) =>
   12 + (hashString(product.id) % 120);
 
-export const getProductDiscount = (product: Stripe.Product) => {
+export const getProductDiscount = (product: CatalogProduct) => {
   const hash = hashString(product.id);
   return hash % 3 === 0 ? 15 : hash % 5 === 0 ? 10 : 0;
 };
 
-export const getProductSpecs = (product: Stripe.Product) => {
+export const getProductSpecs = (product: CatalogProduct) => {
   const index = hashString(product.id) % SPEC_VALUES.length;
   return SPEC_LABELS.map((label, specIndex) => ({
     label,
@@ -235,8 +248,8 @@ export const getProductSpecs = (product: Stripe.Product) => {
   }));
 };
 
-export const enrichProduct = (product: Stripe.Product): EnrichedProduct => {
-  const price = product.default_price as Stripe.Price | null;
+export const enrichProduct = (product: CatalogProduct): EnrichedProduct => {
+  const price = product.default_price;
   const category = getProductCategory(product);
 
   return {
@@ -258,7 +271,7 @@ export const enrichProduct = (product: Stripe.Product): EnrichedProduct => {
   };
 };
 
-export const getCategorySummary = (products: Stripe.Product[]) => {
+export const getCategorySummary = (products: CatalogProduct[]) => {
   const counts = new Map<string, { name: string; accent: string; count: number }>();
 
   products.forEach((product) => {
@@ -274,7 +287,7 @@ export const getCategorySummary = (products: Stripe.Product[]) => {
   return Array.from(counts.values()).sort((a, b) => b.count - a.count);
 };
 
-export const getRelatedProducts = (currentProduct: Stripe.Product, products: Stripe.Product[]) => {
+export const getRelatedProducts = (currentProduct: CatalogProduct, products: CatalogProduct[]) => {
   const currentCategory = getProductCategory(currentProduct).name;
 
   return products

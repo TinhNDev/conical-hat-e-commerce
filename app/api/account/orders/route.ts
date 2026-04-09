@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createOrderForCurrentUser } from "@/lib/account-data";
-import { ShippingAddress, OrderRecord } from "@/lib/ecommerce";
-import { CartItem } from "@/store/cart-store";
+import type { ShippingAddress, OrderRecord } from "@/lib/ecommerce";
+import type { CartItem } from "@/store/cart-store";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {

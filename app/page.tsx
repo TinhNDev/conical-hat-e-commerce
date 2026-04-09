@@ -1,14 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import Stripe from "stripe";
 import { Carousel } from "@/components/carousel";
 import { Button } from "@/components/ui/button";
 import { getCategorySummary } from "@/lib/ecommerce";
-import { stripe } from "@/lib/stripe";
+import { getCatalogProducts } from "@/lib/catalog-data";
 
 export const dynamic = "force-dynamic";
 
-const formatPrice = (price?: Stripe.Price | null) => {
+const formatPrice = (price?: { unit_amount: number | null } | null) => {
   if (!price || price.unit_amount == null) {
     return "Custom pricing";
   }
@@ -17,15 +16,12 @@ const formatPrice = (price?: Stripe.Price | null) => {
 };
 
 export default async function Home() {
-  const products = await stripe.products.list({
-    expand: ["data.default_price"],
-    limit: 6,
-  });
+  const products = await getCatalogProducts(6);
 
-  const heroProduct = products.data[0];
-  const featuredProducts = products.data.slice(0, 3);
-  const categories = getCategorySummary(products.data).slice(0, 4);
-  const heroPrice = heroProduct?.default_price as Stripe.Price | undefined;
+  const heroProduct = products[0];
+  const featuredProducts = products.slice(0, 3);
+  const categories = getCategorySummary(products).slice(0, 4);
+  const heroPrice = heroProduct?.default_price;
   const heroImage = heroProduct?.images?.[0];
 
   return (
@@ -67,8 +63,8 @@ export default async function Home() {
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               {[
-                { label: "Featured drops", value: `${products.data.length}+` },
-                { label: "Checkout flow", value: "Stripe" },
+                { label: "Featured drops", value: `${products.length}+` },
+                { label: "Checkout flow", value: "Database" },
                 { label: "Visual style", value: "Editorial" },
               ].map((item) => (
                 <div
@@ -176,7 +172,7 @@ export default async function Home() {
 
         <div className="grid gap-5 md:grid-cols-3">
           {featuredProducts.map((product, index) => {
-            const price = product.default_price as Stripe.Price | undefined;
+            const price = product.default_price;
             const image = product.images?.[0];
 
             return (
@@ -252,7 +248,7 @@ export default async function Home() {
 
       <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white p-4 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
-          <Carousel products={products.data} />
+          <Carousel products={products} />
         </div>
         <div className="rounded-[2rem] border border-emerald-200 bg-[linear-gradient(180deg,#f7fbf8_0%,#eef6f0_100%)] p-6 sm:p-8">
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-700">

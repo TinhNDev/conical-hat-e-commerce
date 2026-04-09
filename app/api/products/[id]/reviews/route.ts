@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProductReviewsByStripeId, upsertProductReview } from "@/lib/account-data";
+import { getProductReviewsByCatalogId, upsertProductReview } from "@/lib/account-data";
 
 export async function GET(
   _request: Request,
@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
-    const reviews = await getProductReviewsByStripeId(id);
+    const reviews = await getProductReviewsByCatalogId(id);
     return NextResponse.json({ reviews });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load reviews.";
@@ -31,7 +31,7 @@ export async function POST(
     }
 
     const reviews = await upsertProductReview({
-      stripeProductId: id,
+      catalogId: id,
       rating: body.rating as number,
       comment: body.comment.trim(),
     });

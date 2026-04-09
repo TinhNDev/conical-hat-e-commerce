@@ -4,11 +4,11 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Stripe from "stripe";
 import { Heart } from "lucide-react";
 import { Button } from "./ui/button";
 import { RatingStars } from "./rating-stars";
 import {
+  CatalogProduct,
   enrichProduct,
   formatPrice,
   ProductReview,
@@ -18,8 +18,8 @@ import { useCartStore } from "@/store/cart-store";
 import { useToastStore } from "@/store/toast-store";
 
 interface Props {
-  product: Stripe.Product;
-  relatedProducts: Stripe.Product[];
+  product: CatalogProduct;
+  relatedProducts: CatalogProduct[];
   initialReviews: ProductReview[];
 }
 

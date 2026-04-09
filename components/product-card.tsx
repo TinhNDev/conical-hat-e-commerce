@@ -3,16 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Stripe from "stripe";
 import { Heart } from "lucide-react";
 import { Button } from "./ui/button";
 import { RatingStars } from "./rating-stars";
-import { enrichProduct, formatPrice } from "@/lib/ecommerce";
+import { CatalogProduct, enrichProduct, formatPrice } from "@/lib/ecommerce";
 import { useAppStore } from "@/store/app-store";
 import { useToastStore } from "@/store/toast-store";
 
 interface Props {
-  product: Stripe.Product;
+  product: CatalogProduct;
 }
 
 export const ProductCard = ({ product }: Props) => {

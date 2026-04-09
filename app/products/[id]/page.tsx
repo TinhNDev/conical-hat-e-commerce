@@ -1,8 +1,8 @@
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ProductDetail } from "@/components/product-detail";
-import { getProductReviewsByStripeId } from "@/lib/account-data";
+import { getProductReviewsByCatalogId } from "@/lib/account-data";
+import { getCatalogProductById, getCatalogProducts } from "@/lib/catalog-data";
 import { getRelatedProducts } from "@/lib/ecommerce";
-import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -12,18 +12,10 @@ export default async function ProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = await stripe.products.retrieve(id, {
-    expand: ["default_price"],
-  });
-  const products = await stripe.products.list({
-    expand: ["data.default_price"],
-    limit: 12,
-  });
-  const relatedProducts = getRelatedProducts(product, products.data);
-  const reviews = await getProductReviewsByStripeId(id);
-
-  const plainProduct = JSON.parse(JSON.stringify(product));
-  const plainRelatedProducts = JSON.parse(JSON.stringify(relatedProducts));
+  const product = await getCatalogProductById(id);
+  const products = await getCatalogProducts(12);
+  const relatedProducts = getRelatedProducts(product, products);
+  const reviews = await getProductReviewsByCatalogId(id);
 
   return (
     <div className="pb-10">
@@ -35,8 +27,8 @@ export default async function ProductPage({
         ]}
       />
       <ProductDetail
-        product={plainProduct}
-        relatedProducts={plainRelatedProducts}
+        product={product}
+        relatedProducts={relatedProducts}
         initialReviews={reviews}
       />
     </div>

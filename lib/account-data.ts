@@ -4,7 +4,7 @@ import type { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { getSessionFromCookies } from "@/lib/auth";
 import { OrderRecord, ProductReview, ShippingAddress } from "@/lib/ecommerce";
-import { stripe } from "@/lib/stripe";
+import { getCatalogProductRecordById } from "@/lib/catalog-data";
 import { CartItem } from "@/store/cart-store";
 
 const requireAuthenticatedUser = async () => {
@@ -27,107 +27,14 @@ const requireAuthenticatedUser = async () => {
   return user;
 };
 
-const syncProductFromStripe = async (stripeProductId: string) => {
-  const stripeProduct = await stripe.products.retrieve(stripeProductId, {
-    expand: ["default_price"],
-  });
+const getProductByCatalogId = async (catalogId: string) => {
+  const product = await getCatalogProductRecordById(catalogId);
 
-  if (!("id" in stripeProduct) || stripeProduct.deleted) {
+  if (!product) {
     throw new Error("Product not found.");
   }
 
-  const defaultPrice =
-    stripeProduct.default_price && typeof stripeProduct.default_price !== "string"
-      ? stripeProduct.default_price
-      : null;
-
-  const syncedProduct = await prisma.product.upsert({
-    where: {
-      stripeProductId,
-    },
-    create: {
-      stripeProductId: stripeProduct.id,
-      slug: `${stripeProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || stripeProduct.id.toLowerCase()}-${stripeProduct.id.toLowerCase()}`,
-      name: stripeProduct.name,
-      description: stripeProduct.description ?? undefined,
-      status: stripeProduct.active ? "active" : "archived",
-      isFeatured: stripeProduct.metadata.featured === "true",
-      currency: (defaultPrice?.currency ?? "usd").toLowerCase(),
-      basePriceAmount:
-        defaultPrice?.unit_amount != null ? defaultPrice.unit_amount / 100 : null,
-      metadata: Object.keys(stripeProduct.metadata).length
-        ? (Object.fromEntries(
-            Object.entries(stripeProduct.metadata).map(([key, value]) => [key, value ?? ""])
-          ) as Prisma.InputJsonObject)
-        : undefined,
-    },
-    update: {
-      name: stripeProduct.name,
-      description: stripeProduct.description ?? undefined,
-      status: stripeProduct.active ? "active" : "archived",
-      isFeatured: stripeProduct.metadata.featured === "true",
-      currency: (defaultPrice?.currency ?? "usd").toLowerCase(),
-      basePriceAmount:
-        defaultPrice?.unit_amount != null ? defaultPrice.unit_amount / 100 : null,
-      metadata: Object.keys(stripeProduct.metadata).length
-        ? (Object.fromEntries(
-            Object.entries(stripeProduct.metadata).map(([key, value]) => [key, value ?? ""])
-          ) as Prisma.InputJsonObject)
-        : undefined,
-    },
-  });
-
-  await prisma.productImage.deleteMany({
-    where: {
-      productId: syncedProduct.id,
-    },
-  });
-
-  if (stripeProduct.images.length) {
-    await prisma.productImage.createMany({
-      data: stripeProduct.images.map((url, index) => ({
-        productId: syncedProduct.id,
-        url,
-        altText: stripeProduct.name,
-        sortOrder: index,
-        isPrimary: index === 0,
-      })),
-    });
-  }
-
-  return prisma.product.findUniqueOrThrow({
-    where: {
-      id: syncedProduct.id,
-    },
-    include: {
-      images: {
-        orderBy: {
-          sortOrder: "asc",
-        },
-      },
-    },
-  });
-};
-
-const getProductByStripeId = async (stripeProductId: string) => {
-  const product = await prisma.product.findUnique({
-    where: {
-      stripeProductId,
-    },
-    include: {
-      images: {
-        orderBy: {
-          sortOrder: "asc",
-        },
-      },
-    },
-  });
-
-  if (product) {
-    return product;
-  }
-
-  return syncProductFromStripe(stripeProductId);
+  return product;
 };
 
 const toPublicOrder = (order: {
@@ -222,15 +129,15 @@ export const getAccountData = async () => {
 
   return {
     wishlist: wishlistItems
-      .map((item) => item.product.stripeProductId)
+      .map((item) => item.product.id)
       .filter((value): value is string => Boolean(value)),
     orders: orders.map((order) => toPublicOrder(order)),
   };
 };
 
-export const toggleWishlistItem = async (stripeProductId: string) => {
+export const toggleWishlistItem = async (catalogId: string) => {
   const user = await requireAuthenticatedUser();
-  const product = await getProductByStripeId(stripeProductId);
+  const product = await getProductByCatalogId(catalogId);
   const existingItem = await prisma.wishlistItem.findUnique({
     where: {
       userId_productId: {
@@ -258,8 +165,8 @@ export const toggleWishlistItem = async (stripeProductId: string) => {
   return getAccountData();
 };
 
-export const getProductReviewsByStripeId = async (stripeProductId: string) => {
-  const product = await getProductByStripeId(stripeProductId);
+export const getProductReviewsByCatalogId = async (catalogId: string) => {
+  const product = await getProductByCatalogId(catalogId);
   const reviews = await prisma.review.findMany({
     where: {
       productId: product.id,
@@ -276,7 +183,7 @@ export const getProductReviewsByStripeId = async (stripeProductId: string) => {
     (review) =>
       ({
         id: review.id,
-        productId: stripeProductId,
+        productId: catalogId,
         author: review.user.name,
         rating: review.rating,
         comment: review.comment ?? "",
@@ -286,16 +193,16 @@ export const getProductReviewsByStripeId = async (stripeProductId: string) => {
 };
 
 export const upsertProductReview = async ({
-  stripeProductId,
+  catalogId,
   rating,
   comment,
 }: {
-  stripeProductId: string;
+  catalogId: string;
   rating: number;
   comment: string;
 }) => {
   const user = await requireAuthenticatedUser();
-  const product = await getProductByStripeId(stripeProductId);
+  const product = await getProductByCatalogId(catalogId);
 
   await prisma.review.upsert({
     where: {
@@ -318,7 +225,7 @@ export const upsertProductReview = async ({
     },
   });
 
-  return getProductReviewsByStripeId(stripeProductId);
+  return getProductReviewsByCatalogId(catalogId);
 };
 
 export const createOrderForCurrentUser = async ({
@@ -340,16 +247,12 @@ export const createOrderForCurrentUser = async ({
     throw new Error("Your cart is empty.");
   }
 
-  const productRecords = await Promise.all(items.map((item) => getProductByStripeId(item.id)));
+  const productRecords = await Promise.all(items.map((item) => getProductByCatalogId(item.id)));
 
-  const productsByStripeId = new Map(
-    productRecords
-      .filter((product) => product.stripeProductId)
-      .map((product) => [product.stripeProductId as string, product])
-  );
+  const productsById = new Map(productRecords.map((product) => [product.id, product]));
 
   for (const item of items) {
-    if (!productsByStripeId.has(item.id)) {
+    if (!productsById.has(item.id)) {
       throw new Error(`Product ${item.name} is unavailable.`);
     }
   }
@@ -370,7 +273,7 @@ export const createOrderForCurrentUser = async ({
       shippingAddress: toShippingAddressJson(shippingAddress),
       items: {
         create: items.map((item) => {
-          const product = productsByStripeId.get(item.id)!;
+          const product = productsById.get(item.id)!;
           const primaryImage = product.images[0]?.url ?? item.imageUrl;
 
           return {

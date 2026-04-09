@@ -70,13 +70,14 @@ export const Footer = () => {
           </p>
 
           <div className="mt-4 space-y-3">
-{teamMembers.map((member) => (
-  <div
-    className="rounded-[1.1rem] border border-white/70 bg-white/55 px-4 py-2.5 text-sm text-stone-600 shadow-[0_10px_24px_rgba(120,98,68,0.06)]"
-  >
-    <p className="font-medium text-stone-950">{member.name}</p>
-  </div>
-))}
+            {teamMembers.map((member, index) => (
+              <div
+                key={`${member.name}-${member.role}-${index}`}
+                className="rounded-[1.1rem] border border-white/70 bg-white/55 px-4 py-2.5 text-sm text-stone-600 shadow-[0_10px_24px_rgba(120,98,68,0.06)]"
+              >
+                <p className="font-medium text-stone-950">{member.name}</p>
+              </div>
+            ))}
           </div>
         </div>
 

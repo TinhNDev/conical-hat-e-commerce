@@ -7,13 +7,12 @@ export async function POST(request: Request) {
       name?: string;
       email?: string;
       password?: string;
-      studentId?: string;
       rememberMe?: boolean;
     };
 
-    if (!body.name?.trim() || !body.email?.trim() || !body.password?.trim() || !body.studentId?.trim()) {
+    if (!body.name?.trim() || !body.email?.trim() || !body.password?.trim()) {
       return NextResponse.json(
-        { error: "Name, email, password, and student ID are required." },
+        { error: "Name, email, and password are required." },
         { status: 400 }
       );
     }
@@ -30,7 +29,6 @@ export async function POST(request: Request) {
       name: body.name,
       email: body.email,
       password: body.password,
-      studentId: body.studentId,
     });
 
     const publicUser = await issueAuthSession({

@@ -31,7 +31,7 @@ const getProductByCatalogId = async (catalogId: string) => {
   const product = await getCatalogProductRecordById(catalogId);
 
   if (!product) {
-    throw new Error("Product not found.");
+    throw new Error("Product is unavailable.");
   }
 
   return product;
@@ -265,7 +265,7 @@ export const createOrderForCurrentUser = async ({
       status: paymentMethod === "card" ? "paid" : "processing",
       paymentStatus: paymentMethod === "card" ? "paid" : "authorized",
       fulfillmentStatus: "processing",
-      currency: "usd",
+      currency: "vnd",
       subtotalAmount: subtotal / 100,
       discountAmount: discountAmount / 100,
       totalAmount: total / 100,

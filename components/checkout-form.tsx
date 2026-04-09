@@ -187,7 +187,7 @@ export const CheckoutForm = () => {
                 key={option.value}
                 className={`flex cursor-pointer items-start gap-3 rounded-[1.25rem] border px-4 py-4 ${
                   paymentMethod === option.value
-                    ? "border-stone-950 bg-stone-950 text-white"
+                    ? "border-[#8f5f2a] bg-[#8f5f2a] text-white"
                     : "border-stone-200 bg-white text-stone-900"
                 }`}
               >
@@ -209,8 +209,8 @@ export const CheckoutForm = () => {
         </div>
       </section>
 
-      <aside className="rounded-[1.75rem] border border-stone-200 bg-stone-950 p-6 text-stone-50">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-400">
+      <aside className="rounded-[1.75rem] border border-[#d9c8ae] bg-[linear-gradient(180deg,#8f5f2a_0%,#6f7f59_100%)] p-6 text-stone-50">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-200/80">
           Order summary
         </p>
         <div className="mt-5 space-y-4">
@@ -218,13 +218,13 @@ export const CheckoutForm = () => {
             <div key={item.id} className="flex items-center justify-between gap-3 text-sm">
               <div>
                 <p className="font-medium">{item.name}</p>
-                <p className="text-stone-400">Qty {item.quantity}</p>
+                <p className="text-stone-200/80">Qty {item.quantity}</p>
               </div>
               <span>{formatPrice(item.price * item.quantity)}</span>
             </div>
           ))}
         </div>
-        <div className="mt-6 space-y-3 border-t border-stone-800 pt-4 text-sm">
+        <div className="mt-6 space-y-3 border-t border-white/15 pt-4 text-sm">
           <div className="flex justify-between">
             <span>Subtotal</span>
             <span>{formatPrice(subtotal)}</span>

@@ -21,12 +21,12 @@ const quickSearchSuggestions = [
   "travel",
   "premium",
   "studio",
-  "under $50",
+  "duoi 500.000 vnd",
 ];
 
 const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/products", label: "Products" },
+  { href: "/", label: "Trang chủ" },
+  { href: "/products", label: "Sản phẩm" },
   { href: "/admin", label: "Admin" },
   { href: "/blog", label: "Blog / FAQ" },
   { href: "/contact", label: "Contact" },
@@ -99,7 +99,7 @@ export const Navbar = () => {
             <div className="relative h-12 w-12 overflow-hidden rounded-2xl shadow-[0_12px_24px_rgba(23,23,23,0.18)]">
               <Image
                 src="/atelier-logo.svg"
-                alt="Atelier Store logo"
+                alt="LUMI logo"
                 fill
                 className="object-cover"
                 sizes="48px"
@@ -108,7 +108,7 @@ export const Navbar = () => {
             </div>
             <div>
               <p className="font-display text-3xl leading-none text-stone-950 dark:text-stone-100 sm:text-[2.15rem]">
-                Atelier Store
+                LUMI
               </p>
             </div>
           </Link>
@@ -120,7 +120,7 @@ export const Navbar = () => {
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-full px-4 py-2 text-[15px] font-medium text-stone-700 transition hover:bg-stone-950 hover:text-white dark:text-stone-200 dark:hover:bg-stone-100 dark:hover:text-stone-950"
+                className="rounded-full px-4 py-2 text-[15px] font-medium text-stone-700 transition hover:bg-[#8f5f2a] hover:text-white dark:text-stone-200 dark:hover:bg-stone-100 dark:hover:text-stone-950"
               >
                 {link.label}
               </Link>
@@ -171,7 +171,7 @@ export const Navbar = () => {
                 {trimmedQuickSearchTerm ? (
                   <button
                     type="submit"
-                    className="rounded-full bg-stone-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-stone-200"
+                    className="rounded-full bg-[#8f5f2a] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-[#7a5124] dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-stone-200"
                   >
                     Go
                   </button>
@@ -212,9 +212,9 @@ export const Navbar = () => {
             </Link>
             <Link
               href={auth.isAuthenticated ? "/dashboard" : "/login"}
-              className="hidden rounded-full bg-stone-950 px-5 py-2.5 text-[15px] font-medium text-white shadow-[0_12px_24px_rgba(23,23,23,0.16)] transition hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-stone-200 sm:inline-flex"
+              className="hidden rounded-full bg-[#8f5f2a] px-5 py-2.5 text-[15px] font-medium text-white shadow-[0_12px_24px_rgba(143,95,42,0.18)] transition hover:bg-[#7a5124] dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-stone-200 sm:inline-flex"
             >
-              {auth.isAuthenticated ? "Dashboard" : "Login"}
+              {auth.isAuthenticated ? "Dashboard" : "Đăng Nhập"}
             </Link>
             <Button
               variant="ghost"
@@ -254,7 +254,7 @@ export const Navbar = () => {
               </Link>
               <Link
                 href={auth.isAuthenticated ? "/dashboard" : "/login"}
-                className="rounded-2xl bg-stone-950 px-4 py-3 text-base font-medium text-white transition hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-stone-200"
+                className="rounded-2xl bg-[#8f5f2a] px-4 py-3 text-base font-medium text-white transition hover:bg-[#7a5124] dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-stone-200"
                 onClick={() => setMobileOpen(false)}
               >
                 {auth.isAuthenticated ? "Dashboard" : "Login"}

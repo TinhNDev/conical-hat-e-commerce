@@ -38,10 +38,14 @@ const mapRecordToCatalogProduct = (product: NonNullable<ProductRecord>): Catalog
   active: product.status === "active",
 });
 
-export const getCatalogProductRecordById = async (catalogId: string) => {
+export const getCatalogProductRecordById = async (
+  catalogId: string,
+  { includeArchived = false }: { includeArchived?: boolean } = {},
+) => {
   return prisma.product.findFirst({
     where: {
       OR: [{ id: catalogId }, { stripeProductId: catalogId }],
+      ...(includeArchived ? {} : { status: "active" }),
     },
     include: {
       images: {

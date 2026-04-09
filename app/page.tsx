@@ -1,22 +1,26 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Carousel } from "@/components/carousel";
+import { HeroBackgroundGallery } from "@/components/hero-background-gallery";
 import { Button } from "@/components/ui/button";
 import { getCategorySummary } from "@/lib/ecommerce";
 import { getCatalogProducts } from "@/lib/catalog-data";
 
 export const dynamic = "force-dynamic";
 
-const formatPrice = (price?: { unit_amount: number | null } | null) => {
+const formatPrice = (price?: { unit_amount: number | null; currency?: string } | null) => {
   if (!price || price.unit_amount == null) {
-    return "Custom pricing";
+    return "Gia lien he";
   }
 
-  return `$${(price.unit_amount / 100).toFixed(2)}`;
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: (price.currency ?? "vnd").toUpperCase(),
+  }).format(price.unit_amount / 100);
 };
 
 export default async function Home() {
-  const products = await getCatalogProducts(6);
+  const products = await getCatalogProducts(8);
 
   const heroProduct = products[0];
   const featuredProducts = products.slice(0, 3);
@@ -27,63 +31,28 @@ export default async function Home() {
   return (
     <div className="space-y-12 pb-10">
       <section className="relative -mx-4 overflow-hidden rounded-[2rem] border border-stone-200 bg-[linear-gradient(135deg,#f6efe4_0%,#faf7f2_45%,#e8f1ec_100%)] px-6 py-8 shadow-[0_30px_80px_rgba(120,98,68,0.12)] sm:px-8 sm:py-10 lg:px-12 lg:py-14">
-        <div className="absolute -left-16 top-10 h-40 w-40 rounded-full bg-amber-200/50 blur-3xl" />
-        <div className="absolute -right-10 bottom-0 h-52 w-52 rounded-full bg-emerald-200/60 blur-3xl" />
+        <HeroBackgroundGallery />
         <div className="relative grid items-center gap-10 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-8">
-            <div className="inline-flex items-center rounded-full border border-stone-300/80 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.32em] text-stone-700 backdrop-blur">
-              Curated Pieces For Everyday Living
-            </div>
+          <div className="space-y-8 rounded-[2rem] bg-[linear-gradient(135deg,rgba(255,252,246,0.82)_0%,rgba(255,250,244,0.68)_48%,rgba(255,255,255,0.32)_100%)] p-5 shadow-[0_24px_60px_rgba(120,98,68,0.08)] backdrop-blur-[3px] sm:p-7 lg:p-8">
             <div className="max-w-2xl space-y-5">
-              <h1 className="font-display text-5xl leading-none text-stone-950 sm:text-6xl lg:text-7xl">
-                Build a home page that feels like a boutique, not a template.
+              <h1 className="font-display text-5xl leading-[0.92] text-stone-950 sm:text-6xl lg:text-7xl">
+                <span className="block">Đội chất riêng</span>
+                <span className="mt-2 block text-stone-800">Chạm nét Việt</span>
               </h1>
               <p className="max-w-xl text-base leading-7 text-stone-700 sm:text-lg">
-                Discover a tighter edit of standout products with cleaner
-                details, warmer color, and a sharper shopping path from first
-                glance to checkout.
+                LUMI là thương hiệu nón lá thủ công hiện đại, nơi mỗi sản phẩm không chỉ để đội mà còn giúp bạn nổi bật và khác biệt. Khác với những chiếc nón lá thông thường, LUMI tập trung vào thiết kế sáng tạo, vẽ tay và cá nhân hóa theo yêu cầu, giúp mỗi chiếc nón trở thành phiên bản duy nhất dành riêng cho bạn.
+
+Từng sản phẩm được làm từ lá tự nhiên, hoàn thiện tỉ mỉ bởi nghệ nhân, đảm bảo bền – đẹp – lên hình ấn tượng cho mọi outfit, từ đi biển, chụp ảnh đến làm quà tặng.
+
+Bạn có thể mua một chiếc nón ở nhiều nơi, nhưng tại LUMI, bạn sở hữu một chiếc nón mang dấu ấn riêng – không trùng lặp, không đại trà.
               </p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button
-                asChild
-                size="lg"
-                className="h-12 rounded-full bg-stone-950 px-7 text-sm uppercase tracking-[0.2em] text-stone-50 hover:bg-stone-800"
-              >
-                <Link href="/products">Shop The Collection</Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="h-12 rounded-full border-stone-400 bg-white/70 px-7 text-sm uppercase tracking-[0.2em] text-stone-900 hover:bg-white"
-              >
-                <Link href="/checkout">View Cart</Link>
-              </Button>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {[
-                { label: "Featured drops", value: `${products.length}+` },
-                { label: "Checkout flow", value: "Database" },
-                { label: "Visual style", value: "Editorial" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-[1.5rem] border border-stone-300/70 bg-white/65 p-4 backdrop-blur"
-                >
-                  <p className="text-2xl font-semibold text-stone-950">
-                    {item.value}
-                  </p>
-                  <p className="mt-1 text-sm text-stone-600">{item.label}</p>
-                </div>
-              ))}
             </div>
           </div>
           <div className="relative">
             <div className="absolute -inset-3 rounded-[2rem] bg-white/40 blur-2xl" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-stone-200/80 bg-stone-950 p-4 text-stone-50 shadow-2xl">
+            <div className="relative overflow-hidden rounded-[2rem] border border-stone-200/80 bg-[linear-gradient(180deg,rgba(255,250,244,0.96)_0%,rgba(244,236,224,0.98)_100%)] p-4 text-stone-900 shadow-2xl">
               <div className="grid gap-4 md:grid-cols-[1.1fr_0.9fr] lg:grid-cols-1 xl:grid-cols-[1.1fr_0.9fr]">
-                <div className="relative min-h-[320px] overflow-hidden rounded-[1.5rem] bg-stone-900">
+                <div className="relative min-h-[320px] overflow-hidden rounded-[1.5rem] bg-stone-200">
                   {heroImage ? (
                     <Image
                       src={heroImage}
@@ -93,48 +62,50 @@ export default async function Home() {
                       sizes="(min-width: 1280px) 24rem, (min-width: 1024px) 30vw, 100vw"
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,#d6d3d1,transparent_55%)] p-8 text-center text-stone-300">
+                    <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,#ffffff,transparent_55%)] p-8 text-center text-stone-500">
                       Featured product image coming soon
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col justify-between gap-6 rounded-[1.5rem] bg-stone-900/80 p-5">
+                <div className="flex flex-col justify-between gap-6 rounded-[1.5rem] border border-white/70 bg-white/72 p-5 shadow-[0_18px_40px_rgba(120,98,68,0.08)]">
                   <div className="space-y-3">
-                    <p className="text-xs uppercase tracking-[0.28em] text-stone-400">
-                      Product Spotlight
+                    <p className="text-xs uppercase tracking-[0.28em] text-stone-500">
+                      SẢN PHẨM NỔI BẬT
                     </p>
-                    <h2 className="font-display text-3xl leading-tight">
+                    <h2 className="font-display text-3xl leading-tight text-stone-950">
                       {heroProduct?.name ?? "New arrivals"}
                     </h2>
-                    <p className="text-sm leading-6 text-stone-300">
+                    <p className="text-sm leading-6 text-stone-700">
                       {heroProduct?.description ??
                         "A sharper presentation for your strongest item, with enough contrast and breathing room to feel premium."}
                     </p>
                   </div>
                   <div className="space-y-4">
-                    <div className="flex items-end justify-between border-t border-stone-700 pt-4">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.25em] text-stone-500">
-                          Starting at
+                    <div className="space-y-4 border-t border-stone-200 pt-4">
+                      <div className="min-w-0">
+                        <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+                          Mức giá hiện tại
                         </p>
-                        <p className="text-3xl font-semibold text-amber-200">
+                        <p className="mt-1 text-[clamp(1.95rem,4.5vw,2.75rem)] font-semibold leading-tight text-amber-700">
                           {formatPrice(heroPrice)}
                         </p>
                       </div>
                       {heroProduct ? (
-                        <Link
-                          href={`/products/${heroProduct.id}`}
-                          className="rounded-full border border-stone-600 px-4 py-2 text-sm font-medium text-stone-100 transition hover:border-amber-200 hover:text-amber-200"
-                        >
-                          View item
-                        </Link>
+                        <div className="flex justify-start">
+                          <Link
+                            href={`/products/${heroProduct.id}`}
+                            className="inline-flex h-10 items-center justify-center rounded-full border border-stone-300/90 bg-stone-50 px-4 text-xs font-semibold uppercase tracking-[0.14em] text-stone-700 transition hover:border-amber-500 hover:text-amber-700"
+                          >
+                            Chi tiết sản phẩm
+                          </Link>
+                        </div>
                       ) : null}
                     </div>
-                    <div className="grid grid-cols-2 gap-3 text-xs uppercase tracking-[0.18em] text-stone-400">
-                      <div className="rounded-2xl border border-stone-800 bg-stone-950 p-3">
+                    <div className="grid grid-cols-2 gap-3 text-xs uppercase tracking-[0.18em] text-stone-600">
+                      <div className="rounded-2xl border border-stone-200 bg-[#fff8f0] p-3">
                         Fast visual scan
                       </div>
-                      <div className="rounded-2xl border border-stone-800 bg-stone-950 p-3">
+                      <div className="rounded-2xl border border-stone-200 bg-[#f4efe8] p-3">
                         Cleaner CTA flow
                       </div>
                     </div>
@@ -147,26 +118,20 @@ export default async function Home() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-        <div className="rounded-[2rem] border border-stone-200 bg-stone-950 p-6 text-stone-50 sm:p-8">
-          <p className="text-xs uppercase tracking-[0.3em] text-amber-200">
-            Why This Layout Works
+        <div className="rounded-[2rem] border border-[#d9c8ae] bg-[linear-gradient(160deg,#f6ecde_0%,#efe3d2_52%,#e6efe7_100%)] p-6 text-stone-900 shadow-[0_24px_70px_rgba(120,98,68,0.10)] sm:p-8">
+          <p className="text-xs uppercase tracking-[0.3em] text-amber-800">
+            Tinh thần của LUMI
           </p>
-          <h2 className="mt-4 font-display text-3xl leading-tight sm:text-4xl">
-            Better hierarchy, better first impression.
-          </h2>
-          <div className="mt-8 space-y-5 text-sm leading-7 text-stone-300">
-            <p>
-              The page now leads with one strong promise, one featured product,
-              and one clean route into the catalog.
-            </p>
-            <p>
-              Warm neutrals and soft green accents keep the store feeling calm
-              and premium without turning into the usual black-and-white demo.
-            </p>
-            <p>
-              Product discovery is still immediate, but the composition gives
-              your storefront more personality.
-            </p>
+          <div className="relative mt-8 w-full max-w-[520px] overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/55 shadow-[0_20px_50px_rgba(120,98,68,0.10)]">
+            <div className="relative h-[360px]">
+              <Image
+                src="/non-la-vector.jpg"
+                alt="Tinh thần thiet ke non la LUMI"
+                fill
+                className="object-cover"
+                sizes="(min-width: 1024px) 36vw, 100vw"
+              />
+            </div>
           </div>
         </div>
 
@@ -200,21 +165,21 @@ export default async function Home() {
                 </div>
                 <div className="space-y-3 p-5">
                   <p className="text-xs uppercase tracking-[0.28em] text-stone-500">
-                    Featured {index + 1}
+                    Tuyển chọn {index + 1}
                   </p>
                   <h3 className="font-display text-2xl leading-tight text-stone-950">
                     {product.name}
                   </h3>
                   <p className="line-clamp-3 text-sm leading-6 text-stone-600">
                     {product.description ||
-                      "A tighter card layout gives each product more presence without making the page feel crowded."}
+                      "Mỗi thiết kế được trình bày gọn gàng để họa tiết, chất liệu và cá tính thủ công hiện lên rõ hơn ngay từ cái nhìn đầu tiên."}
                   </p>
                   <div className="flex items-center justify-between pt-2">
                     <span className="text-lg font-semibold text-stone-950">
                       {formatPrice(price)}
                     </span>
                     <span className="text-sm font-medium text-stone-700 transition group-hover:text-stone-950">
-                      Explore
+                      Xem mẫu
                     </span>
                   </div>
                 </div>
@@ -226,23 +191,24 @@ export default async function Home() {
 
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {categories.map((category) => (
-          <div
+          <Link
             key={category.name}
+            href={`/products?category=${encodeURIComponent(category.name)}`}
             className="rounded-[1.75rem] border border-stone-200 bg-white p-6"
           >
             <p className="text-xs uppercase tracking-[0.26em] text-stone-500">
-              Category
+              Danh mục
             </p>
-            <h2 className="mt-3 font-display text-3xl text-stone-950">
+            <h2 className="font-display text-3xl text-stone-950">
               {category.name}
             </h2>
             <p className="mt-3 text-sm leading-6 text-stone-600">
               {category.accent}
             </p>
             <p className="mt-4 text-sm font-medium text-stone-800">
-              {category.count} products
+              {category.count} sản phẩm
             </p>
-          </div>
+          </Link>
         ))}
       </section>
 
@@ -252,15 +218,14 @@ export default async function Home() {
         </div>
         <div className="rounded-[2rem] border border-emerald-200 bg-[linear-gradient(180deg,#f7fbf8_0%,#eef6f0_100%)] p-6 sm:p-8">
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-700">
-            Ready To Browse
+            Sẵn sàng khám phá
           </p>
           <h2 className="mt-4 max-w-md font-display text-3xl leading-tight text-stone-950 sm:text-4xl">
-            Jump from inspiration to product pages without losing momentum.
+            Từ cảm hứng đầu tiên đến chiếc nón dành riêng cho bạn.
           </h2>
           <p className="mt-4 max-w-lg text-sm leading-7 text-stone-700">
-            Use this page as your storefront anchor: a polished first stop that
-            still pushes shoppers directly into the product grid and checkout
-            flow.
+            Khám phá bộ sưu tập nón lá thủ công, chọn thiết kế phù hợp cho chụp ảnh,
+            du lịch, quà tặng hoặc một dấu ấn cá nhân mang tinh thần Việt theo cách mới mẻ hơn.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button
@@ -268,7 +233,7 @@ export default async function Home() {
               size="lg"
               className="h-12 rounded-full bg-emerald-900 px-7 text-sm uppercase tracking-[0.18em] text-white hover:bg-emerald-800"
             >
-              <Link href="/products">See All Products</Link>
+              <Link href="/products">Xem toàn bộ sản phẩm</Link>
             </Button>
             <Button
               asChild
@@ -276,7 +241,7 @@ export default async function Home() {
               variant="outline"
               className="h-12 rounded-full border-emerald-700/40 bg-transparent px-7 text-sm uppercase tracking-[0.18em] text-emerald-900 hover:bg-emerald-50"
             >
-              <Link href="/checkout">Go To Checkout</Link>
+              <Link href="/checkout">Đi đến giỏ hàng</Link>
             </Button>
           </div>
         </div>

@@ -130,7 +130,7 @@ export const CartView = () => {
               className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none"
             />
             <div className="flex gap-3">
-              <Button type="submit" className="rounded-full bg-stone-950 hover:bg-stone-800">
+              <Button type="submit" className="rounded-full bg-[#8f5f2a] hover:bg-[#7a5124]">
                 Apply code
               </Button>
               {discountCode ? (
@@ -157,8 +157,8 @@ export const CartView = () => {
           ) : null}
         </div>
 
-        <div className="rounded-[1.75rem] border border-stone-200 bg-stone-950 p-6 text-stone-50">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-400">
+        <div className="rounded-[1.75rem] border border-[#d9c8ae] bg-[linear-gradient(180deg,#8f5f2a_0%,#6f7f59_100%)] p-6 text-stone-50">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-200/80">
             Order summary
           </p>
           <div className="mt-5 space-y-3 text-sm">
@@ -174,7 +174,7 @@ export const CartView = () => {
               <span>Shipping</span>
               <span>Free</span>
             </div>
-            <div className="flex justify-between border-t border-stone-800 pt-3 text-lg font-semibold">
+            <div className="flex justify-between border-t border-white/15 pt-3 text-lg font-semibold">
               <span>Total</span>
               <span>{formatPrice(total)}</span>
             </div>

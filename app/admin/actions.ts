@@ -108,6 +108,8 @@ const generatePasswordHash = (password: string) => {
   return `${salt}:${hashPassword(password, salt)}`;
 };
 
+const generateStudentId = () => `CUS-${randomBytes(4).toString("hex").toUpperCase()}`;
+
 const revalidateCatalog = () => {
   revalidatePath("/admin");
   revalidatePath("/");
@@ -167,6 +169,68 @@ const replaceProductImages = async (productId: string, name: string, images: str
   });
 };
 
+const syncProductVariants = async ({
+  productId,
+  price,
+  currency,
+  active,
+}: {
+  productId: string;
+  price: { amount: number } | null;
+  currency: string;
+  active: boolean;
+}) => {
+  const variants = await prisma.productVariant.findMany({
+    where: {
+      productId,
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+
+  const currentVariant = variants[0];
+
+  if (!currentVariant && price) {
+    await prisma.productVariant.create({
+      data: {
+        productId,
+        name: "Default",
+        priceAmount: price.amount,
+        currency,
+        isActive: active,
+      },
+    });
+
+    return;
+  }
+
+  if (!currentVariant) {
+    return;
+  }
+
+  await prisma.productVariant.updateMany({
+    where: {
+      productId,
+    },
+    data: {
+      isActive: active,
+      currency,
+    },
+  });
+
+  await prisma.productVariant.update({
+    where: {
+      id: currentVariant.id,
+    },
+    data: {
+      priceAmount: price?.amount ?? null,
+      currency,
+      isActive: active,
+    },
+  });
+};
+
 export async function createProductAction(formData: FormData) {
   let successMessage = "";
 
@@ -180,7 +244,7 @@ export async function createProductAction(formData: FormData) {
       existingKey: "existingImages",
     });
     const price = getPriceInput(getOptionalString(formData, "price"));
-    const currency = getOptionalString(formData, "currency").toLowerCase() || "usd";
+    const currency = getOptionalString(formData, "currency").toLowerCase() || "vnd";
     const active = formData.get("active") === "on";
     const metadata = parseMetadata(getOptionalString(formData, "metadata"));
     const fallbackId = randomBytes(8).toString("hex");
@@ -233,7 +297,7 @@ export async function createProductStateAction(
       existingKey: "existingImages",
     });
     const price = getPriceInput(getOptionalString(formData, "price"));
-    const currency = getOptionalString(formData, "currency").toLowerCase() || "usd";
+    const currency = getOptionalString(formData, "currency").toLowerCase() || "vnd";
     const active = formData.get("active") === "on";
     const metadata = parseMetadata(getOptionalString(formData, "metadata"));
     const fallbackId = randomBytes(8).toString("hex");
@@ -292,26 +356,17 @@ export async function updateProductAction(formData: FormData) {
     const active = formData.get("active") === "on";
     const metadata = parseMetadata(getOptionalString(formData, "metadata"));
     const price = getPriceInput(getOptionalString(formData, "price"));
-    const currency = getOptionalString(formData, "currency").toLowerCase() || "usd";
+    const currency = getOptionalString(formData, "currency").toLowerCase() || "vnd";
 
     const existingProduct = await prisma.product.findUnique({
       where: {
         id: productId,
-      },
-      include: {
-        variants: {
-          orderBy: {
-            createdAt: "asc",
-          },
-        },
       },
     });
 
     if (!existingProduct) {
       throw new Error("Product not found.");
     }
-
-    const currentVariant = existingProduct.variants[0];
 
     await prisma.product.update({
       where: {
@@ -327,28 +382,12 @@ export async function updateProductAction(formData: FormData) {
       },
     });
 
-    if (!currentVariant && price) {
-      await prisma.productVariant.create({
-        data: {
-          productId,
-          name: "Default",
-          priceAmount: price?.amount,
-          currency,
-          isActive: active,
-        },
-      });
-    } else if (currentVariant) {
-      await prisma.productVariant.update({
-        where: {
-          id: currentVariant.id,
-        },
-        data: {
-          priceAmount: price?.amount ?? null,
-          currency,
-          isActive: active,
-        },
-      });
-    }
+    await syncProductVariants({
+      productId,
+      price,
+      currency,
+      active,
+    });
 
     await replaceProductImages(productId, name, images);
 
@@ -360,6 +399,72 @@ export async function updateProductAction(formData: FormData) {
   }
 
   redirect(toAdminUrl({ type: "success", message: successMessage, view: "products", productTab: "catalog" }));
+}
+
+export async function updateProductStateAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    await ensureAdminAccess();
+    const productId = getRequiredString(formData, "productId");
+    const name = getRequiredString(formData, "name");
+    const description = getOptionalString(formData, "description");
+    const images = await collectImageUrls({
+      formData,
+      fileKey: "imageFiles",
+      existingKey: "existingImages",
+    });
+    const active = formData.get("active") === "on";
+    const metadata = parseMetadata(getOptionalString(formData, "metadata"));
+    const price = getPriceInput(getOptionalString(formData, "price"));
+    const currency = getOptionalString(formData, "currency").toLowerCase() || "vnd";
+
+    const existingProduct = await prisma.product.findUnique({
+      where: {
+        id: productId,
+      },
+    });
+
+    if (!existingProduct) {
+      throw new Error("Product not found.");
+    }
+
+    await prisma.product.update({
+      where: {
+        id: productId,
+      },
+      data: {
+        name,
+        description: description || undefined,
+        status: active ? "active" : "archived",
+        currency,
+        basePriceAmount: price?.amount ?? null,
+        metadata: metadata as Prisma.InputJsonValue,
+      },
+    });
+
+    await syncProductVariants({
+      productId,
+      price,
+      currency,
+      active,
+    });
+
+    await replaceProductImages(productId, name, images);
+
+    revalidateCatalog();
+
+    return {
+      status: "success",
+      message: `Updated product ${name}.`,
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to update product.",
+    };
+  }
 }
 
 export async function deleteProductAction(formData: FormData) {
@@ -378,23 +483,57 @@ export async function deleteProductAction(formData: FormData) {
       throw new Error("Product not found.");
     }
 
-    await prisma.product.update({
+    await prisma.product.delete({
       where: {
         id: productId,
-      },
-      data: {
-        status: "archived",
       },
     });
 
     revalidateCatalog();
-    successMessage = `Archived product ${product.name}.`;
+    successMessage = `Deleted product ${product.name}.`;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to remove product.";
     redirect(toAdminUrl({ type: "error", message, view: "products", productTab: "catalog" }));
   }
 
   redirect(toAdminUrl({ type: "success", message: successMessage, view: "products", productTab: "catalog" }));
+}
+
+export async function deleteProductStateAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    await ensureAdminAccess();
+    const productId = getRequiredString(formData, "productId");
+    const product = await prisma.product.findUnique({
+      where: {
+        id: productId,
+      },
+    });
+
+    if (!product) {
+      throw new Error("Product not found.");
+    }
+
+    await prisma.product.delete({
+      where: {
+        id: productId,
+      },
+    });
+
+    revalidateCatalog();
+
+    return {
+      status: "success",
+      message: `Deleted product ${product.name}.`,
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to remove product.",
+    };
+  }
 }
 
 export async function createCustomerAction(formData: FormData) {
@@ -404,9 +543,14 @@ export async function createCustomerAction(formData: FormData) {
     await ensureAdminAccess();
     const name = getRequiredString(formData, "name");
     const email = getRequiredString(formData, "email").toLowerCase();
-    const studentId = getRequiredString(formData, "studentId");
     const phone = getOptionalString(formData, "phone");
     const notes = getOptionalString(formData, "notes");
+    const existingUser = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+    const studentId = existingUser?.studentId || generateStudentId();
 
     const customer = await stripe.customers.create({
       name,
@@ -461,7 +605,6 @@ export async function updateCustomerAction(formData: FormData) {
     await ensureAdminAccess();
     const name = getRequiredString(formData, "name");
     const email = getRequiredString(formData, "email").toLowerCase();
-    const studentId = getRequiredString(formData, "studentId");
     const phone = getOptionalString(formData, "phone");
     const notes = getOptionalString(formData, "notes");
 
@@ -474,6 +617,8 @@ export async function updateCustomerAction(formData: FormData) {
     if (!user) {
       throw new Error("Customer not found.");
     }
+
+    const studentId = user.studentId || generateStudentId();
 
     if (user.stripeCustomerId) {
       await stripe.customers.update(user.stripeCustomerId, {

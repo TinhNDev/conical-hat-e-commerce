@@ -3,6 +3,7 @@ import { ProductDetail } from "@/components/product-detail";
 import { getProductReviewsByCatalogId } from "@/lib/account-data";
 import { getCatalogProductById, getCatalogProducts } from "@/lib/catalog-data";
 import { getRelatedProducts } from "@/lib/ecommerce";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,14 @@ export default async function ProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = await getCatalogProductById(id);
+  let product;
+
+  try {
+    product = await getCatalogProductById(id);
+  } catch {
+    notFound();
+  }
+
   const products = await getCatalogProducts(12);
   const relatedProducts = getRelatedProducts(product, products);
   const reviews = await getProductReviewsByCatalogId(id);

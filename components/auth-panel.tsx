@@ -20,7 +20,6 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
     email: "",
     password: "",
     confirmPassword: "",
-    studentId: "",
     rememberMe: false,
   });
   const [error, setError] = useState("");
@@ -31,7 +30,7 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
 
       if (mode === "register") {
         if (form.password !== form.confirmPassword) {
-          setError("Password confirmation does not match.");
+          setError("Mật khẩu xác nhận không khớp.");
           return;
         }
 
@@ -39,7 +38,6 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
           name: form.name,
           email: form.email,
           password: form.password,
-          studentId: form.studentId,
           rememberMe: form.rememberMe,
         });
       } else {
@@ -55,31 +53,37 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
       router.push(redirectTarget ?? (nextRole === "admin" ? "/admin" : "/dashboard"));
       router.refresh();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Unable to submit form.");
+      setError(
+        submitError instanceof Error ? submitError.message : "Không thể gửi biểu mẫu.",
+      );
     }
   };
 
   return (
-    <div className="mx-auto max-w-xl rounded-[2rem] border border-stone-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:p-8">
+    <div className="mx-auto max-w-xl rounded-[2rem] border border-stone-200 bg-[linear-gradient(180deg,#fffdfa_0%,#f8f2ea_100%)] p-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:p-8">
       <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-500">
-        {mode === "login" ? "Login" : "Register"}
+        {mode === "login" ? "Đăng nhập" : "Đăng ký"}
       </p>
-      <h1 className="mt-4 font-display text-4xl text-stone-950">
-        {mode === "login" ? "Welcome back" : "Create your shopper profile"}
+      <h1 className="mt-4 font-display text-4xl leading-tight text-stone-950">
+        {mode === "login"
+          ? "Chào mừng bạn quay lại với LUMI"
+          : "Tạo tài khoản để bắt đầu mua sắm"}
       </h1>
-      <p className="mt-3 text-sm leading-7 text-stone-600">
-        Authentication is now handled by backend API routes, password hashing, and
-        signed HTTP-only session cookies.
+      <p className="mt-4 max-w-lg text-sm leading-7 text-stone-700">
+        {mode === "login"
+          ? "Đăng nhập để theo dõi đơn hàng, lưu sản phẩm yêu thích và tiếp tục hành trình chọn chiếc nón phù hợp với dấu ấn của bạn."
+          : "Đăng ký tài khoản để lưu danh sách yêu thích, quản lý đơn hàng và nhận trải nghiệm mua sắm thuận tiện hơn."}
       </p>
 
       <div className="mt-8 space-y-4">
         {mode === "register" ? (
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-stone-700">Full name</span>
+            <span className="text-sm font-medium text-stone-700">Họ và tên</span>
             <input
               value={form.name}
               onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-              className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none"
+              placeholder="Nhập họ và tên của bạn"
+              className="w-full rounded-2xl border border-stone-300 bg-white/80 px-4 py-3 text-sm outline-none transition focus:border-stone-500"
             />
           </label>
         ) : null}
@@ -89,45 +93,35 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
           <input
             value={form.email}
             onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-            className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none"
+            placeholder="ban@email.com"
+            className="w-full rounded-2xl border border-stone-300 bg-white/80 px-4 py-3 text-sm outline-none transition focus:border-stone-500"
           />
         </label>
 
-        {mode === "register" ? (
-          <label className="block space-y-2">
-            <span className="text-sm font-medium text-stone-700">Student ID</span>
-            <input
-              value={form.studentId}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, studentId: event.target.value }))
-              }
-              className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none"
-            />
-          </label>
-        ) : null}
-
         <label className="block space-y-2">
-          <span className="text-sm font-medium text-stone-700">Password</span>
+          <span className="text-sm font-medium text-stone-700">Mật khẩu</span>
           <input
             type="password"
             value={form.password}
             onChange={(event) =>
               setForm((current) => ({ ...current, password: event.target.value }))
             }
-            className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none"
+            placeholder="Nhập mật khẩu"
+            className="w-full rounded-2xl border border-stone-300 bg-white/80 px-4 py-3 text-sm outline-none transition focus:border-stone-500"
           />
         </label>
 
         {mode === "register" ? (
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-stone-700">Confirm password</span>
+            <span className="text-sm font-medium text-stone-700">Xác nhận mật khẩu</span>
             <input
               type="password"
               value={form.confirmPassword}
               onChange={(event) =>
                 setForm((current) => ({ ...current, confirmPassword: event.target.value }))
               }
-              className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none"
+              placeholder="Nhập lại mật khẩu"
+              className="w-full rounded-2xl border border-stone-300 bg-white/80 px-4 py-3 text-sm outline-none transition focus:border-stone-500"
             />
           </label>
         ) : null}
@@ -140,7 +134,7 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
               setForm((current) => ({ ...current, rememberMe: event.target.checked }))
             }
           />
-          Remember me
+          Ghi nhớ đăng nhập
         </label>
 
         {error ? <p className="text-sm text-rose-600">{error}</p> : null}
@@ -150,7 +144,11 @@ export const AuthPanel = ({ mode }: AuthPanelProps) => {
           disabled={auth.isLoading}
           className="w-full rounded-full bg-stone-950 py-6 text-sm uppercase tracking-[0.18em] hover:bg-stone-800"
         >
-          {auth.isLoading ? "Please wait" : mode === "login" ? "Sign in" : "Create account"}
+          {auth.isLoading
+            ? "Vui lòng chờ"
+            : mode === "login"
+              ? "Đăng nhập"
+              : "Tạo tài khoản"}
         </Button>
       </div>
     </div>

@@ -79,24 +79,28 @@ export interface EnrichedProduct {
 
 const CATEGORY_PRESETS = [
   {
-    name: "Work Essentials",
-    accent: "Refined utility for focused spaces.",
-    tags: ["Minimal", "Desk-ready", "Durable"],
+    name: "Phong dáng tối giản",
+    accent:
+      "Thiết kế gọn gàng, dễ phối và giữ được nét thanh lịch hiện đại.",
+    tags: ["Tối giản", "Dễ phối", "Thanh lịch"],
   },
   {
-    name: "Everyday Carry",
-    accent: "Compact pieces made for movement.",
-    tags: ["Portable", "Lightweight", "Travel"],
+    name: "Di chuyển mỗi ngày",
+    accent:
+      "Nhẹ, thoáng và linh hoạt cho những buổi dạo phố, du lịch hay chụp ảnh ngoài trời.",
+    tags: ["Nhẹ", "Thoáng", "Linh hoạt"],
   },
   {
-    name: "Studio Picks",
-    accent: "Expressive designs with a stronger visual edge.",
-    tags: ["Statement", "Curated", "Premium"],
+    name: "Điểm nhấn sáng tạo",
+    accent:
+      "Những mẫu nón lá có họa tiết và cảm hứng thiết kế nổi bật, khác biệt.",
+    tags: ["Nổi bật", "Nghệ thuật", "Cao cấp"],
   },
   {
-    name: "Home Comfort",
-    accent: "Soft, practical objects for calmer routines.",
-    tags: ["Cozy", "Warm", "Lifestyle"],
+    name: "Nét Việt ứng dụng",
+    accent:
+      "Kết hợp chất liệu thủ công và tinh thần Việt trong những khoảnh khắc đời thường.",
+    tags: ["Thủ công", "Truyền thống", "Đời sống"],
   },
 ];
 
@@ -173,33 +177,19 @@ export const faqs = [
 export const teamMembers = [
   {
     name: "Thanh Tinh",
-    studentId: "MSSV-2026001",
-    role: "Frontend Engineer",
-    github: "https://github.com/thanhtinh",
-  },
-  {
-    name: "Demo Collaborator",
-    studentId: "MSSV-2026002",
-    role: "UI / UX Designer",
-    github: "https://github.com/example-designer",
-  },
-  {
-    name: "Project Support",
-    studentId: "MSSV-2026003",
-    role: "Product Strategist",
-    github: "https://github.com/example-pm",
-  },
+    role: "Software Engineer",
+  }
 ];
 
 const hashString = (value: string) =>
   value.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
-export const formatPrice = (amount: number | null | undefined, currency = "usd") => {
+export const formatPrice = (amount: number | null | undefined, currency = "vnd") => {
   if (amount == null) {
-    return "Custom pricing";
+    return "Gia lien he";
   }
 
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: currency.toUpperCase(),
   }).format(amount / 100);
@@ -260,7 +250,7 @@ export const enrichProduct = (product: CatalogProduct): EnrichedProduct => {
       "A curated product with a cleaner presentation, practical details, and a stronger visual hierarchy.",
     images: product.images ?? [],
     price: price?.unit_amount ?? null,
-    currency: price?.currency ?? "usd",
+    currency: price?.currency ?? "vnd",
     category: category.name,
     rating: getProductRating(product),
     reviewCount: getProductReviewCount(product),

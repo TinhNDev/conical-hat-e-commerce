@@ -49,6 +49,8 @@ const generatePasswordHash = (password: string) => {
   return `${salt}:${hashPassword(password, salt)}`;
 };
 
+const generateStudentId = () => `CUS-${randomBytes(4).toString("hex").toUpperCase()}`;
+
 const verifyPassword = (password: string, storedHash: string) => {
   const [salt, hashedValue] = storedHash.split(":");
 
@@ -268,12 +270,10 @@ export const registerUser = async ({
   name,
   email,
   password,
-  studentId,
 }: {
   name: string;
   email: string;
   password: string;
-  studentId: string;
 }) => {
   const normalizedEmail = email.trim().toLowerCase();
 
@@ -289,7 +289,7 @@ export const registerUser = async ({
     data: {
       name: name.trim(),
       email: normalizedEmail,
-      studentId: studentId.trim(),
+      studentId: generateStudentId(),
       role: getRoleForEmail(normalizedEmail),
       passwordHash: generatePasswordHash(password),
     },

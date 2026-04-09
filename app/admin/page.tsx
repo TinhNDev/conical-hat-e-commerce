@@ -1,31 +1,21 @@
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { AdminCreateProductForm } from "@/components/admin-create-product-form";
+import { AdminDeleteProductForm } from "@/components/admin-delete-product-form";
+import { AdminUpdateProductForm } from "@/components/admin-update-product-form";
+import { ProductList } from "@/components/product-list";
 import { getAdminCustomers, getAdminProducts, syncAdminDataFromStripe } from "@/lib/admin-data";
 import { getSessionFromCookies } from "@/lib/auth";
-import Image from "next/image";
+import { getCatalogProducts } from "@/lib/catalog-data";
 import Link from "next/link";
-import { ArrowRight, Boxes, CircleUserRound, CreditCard, Mail, Package2, Phone, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import {
   createCustomerAction,
   deleteCustomerAction,
-  deleteProductAction,
   updateCustomerAction,
-  updateProductAction,
 } from "./actions";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
-
-const formatDatabasePrice = (amount: number | null | undefined, currency = "usd") => {
-  if (amount == null) {
-    return "Custom pricing";
-  }
-
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(amount);
-};
 
 const inputClassName =
   "w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] outline-none transition focus:border-stone-400 focus:bg-stone-50 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:focus:bg-stone-900";
@@ -38,11 +28,85 @@ const subPanelClassName =
 const formShellClassName =
   "mt-6 space-y-5 rounded-[1.75rem] border border-dashed border-stone-300 bg-[linear-gradient(180deg,rgba(250,247,242,0.8)_0%,rgba(255,255,255,0.95)_100%)] p-5 dark:border-stone-700 dark:bg-stone-900/50";
 const primaryButtonClassName =
-  "inline-flex items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-stone-200";
+  "inline-flex items-center justify-center gap-2 rounded-full bg-[#8f5f2a] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#7a5124] dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-stone-200";
 const dangerButtonClassName =
   "inline-flex items-center justify-center gap-2 rounded-full border border-rose-200 px-5 py-3 text-sm font-medium text-rose-700 transition hover:bg-rose-50 dark:border-rose-900 dark:text-rose-200 dark:hover:bg-rose-950/30";
-const collectionShellClassName =
-  "mt-6 rounded-[1.75rem] border border-stone-200 bg-stone-50/70 p-4 dark:border-stone-700 dark:bg-stone-900/30";
+
+function AdminProductEditorItem({
+  product,
+  labelClassName,
+  inputClassName,
+  primaryButtonClassName,
+  dangerButtonClassName,
+  subPanelClassName,
+}: {
+  product: {
+    id: string;
+    name: string;
+    description: string | null;
+    currency: string;
+    status: string;
+    basePriceAmount: string | null;
+    images: Array<{ url: string }>;
+  };
+  labelClassName: string;
+  inputClassName: string;
+  primaryButtonClassName: string;
+  dangerButtonClassName: string;
+  subPanelClassName: string;
+}) {
+  return (
+    <article className={`${subPanelClassName} space-y-5`}>
+      <div className="flex flex-col gap-4 rounded-[1.5rem] border border-stone-200 bg-[linear-gradient(135deg,#faf7f2_0%,#ffffff_100%)] p-5 dark:border-stone-700 dark:bg-stone-900/50 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full bg-stone-950 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white dark:bg-stone-100 dark:text-stone-950">
+              {product.status === "active" ? "Đang bán" : "Đã ẩn"}
+            </span>
+            <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300">
+              {product.images.length} ảnh
+            </span>
+            <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300">
+              {product.currency.toUpperCase()}
+            </span>
+          </div>
+          <div>
+            <h3 className="text-2xl font-semibold text-stone-950 dark:text-stone-100">
+              {product.name}
+            </h3>
+            <p className="mt-2 max-w-3xl text-sm leading-7 text-stone-600 dark:text-stone-300">
+              {product.description || "Sản phẩm này chưa có mô tả chi tiết."}
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-[1.25rem] border border-stone-200 bg-white px-4 py-3 text-sm text-stone-600 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">
+            Mã sản phẩm
+          </p>
+          <p className="mt-2 break-all font-mono text-xs">
+            {product.id}
+          </p>
+        </div>
+      </div>
+
+      <AdminUpdateProductForm
+        product={product}
+        formClassName="space-y-5"
+        labelClassName={labelClassName}
+        inputClassName={inputClassName}
+        primaryButtonClassName={primaryButtonClassName}
+      />
+
+      <div className="flex justify-end border-t border-stone-200 pt-4 dark:border-stone-700">
+        <AdminDeleteProductForm
+          productId={product.id}
+          className={dangerButtonClassName}
+        />
+      </div>
+    </article>
+  );
+}
 
 type AdminPageProps = {
   searchParams?: Promise<{
@@ -78,44 +142,6 @@ function AdminStatCard({
   );
 }
 
-function ProductPreview({
-  image,
-  name,
-  status,
-}: {
-  image: string | null;
-  name: string;
-  status: "active" | "archived";
-}) {
-  return (
-    <div className="overflow-hidden rounded-[1.5rem] border border-stone-200 bg-[linear-gradient(180deg,#faf7f2_0%,#f5f5f4_100%)] dark:border-stone-700 dark:bg-stone-900">
-      <div className="flex items-center justify-between border-b border-stone-200/80 px-4 py-3 dark:border-stone-700">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">
-          Product image
-        </p>
-        <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-950 dark:text-stone-300">
-          {status}
-        </span>
-      </div>
-      {image ? (
-        <div className="relative aspect-[4/5] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.9),rgba(245,245,244,0.4)_58%,transparent_100%)] p-4">
-          <Image
-            src={image}
-            alt={name}
-            fill
-            className="object-contain p-4"
-            sizes="(min-width: 1280px) 240px, (min-width: 768px) 220px, 100vw"
-          />
-        </div>
-      ) : (
-        <div className="flex aspect-[4/5] items-center justify-center px-5 text-center text-sm text-stone-500 dark:text-stone-300">
-          No product image
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const session = await getSessionFromCookies();
 
@@ -126,582 +152,252 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const resolvedSearchParams = await ((searchParams ?? Promise.resolve({})) as Promise<AdminSearchParams>);
   const selectedView = resolvedSearchParams.view === "customers" ? "customers" : "products";
   const selectedProductTab = resolvedSearchParams.productTab === "catalog" ? "catalog" : "create";
-  const feedbackType = resolvedSearchParams.type === "error" ? "error" : "success";
-  const feedbackMessage = resolvedSearchParams.message;
 
   if (selectedView === "customers") {
     await syncAdminDataFromStripe();
   }
 
   const [products, customers] = await Promise.all([getAdminProducts(), getAdminCustomers()]);
-  const activeProductRecords = products.filter((product) => product.status === "active");
-  const archivedProductRecords = products.filter((product) => product.status === "archived");
+  const editableProducts = products.map((product) => ({
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    currency: product.currency,
+    status: product.status,
+    basePriceAmount:
+      product.basePriceAmount != null ? product.basePriceAmount.toString() : null,
+    images: product.images.map((image) => ({ url: image.url })),
+  }));
+  const activeProductRecords = editableProducts.filter((product) => product.status === "active");
+  const archivedProductRecords = editableProducts.filter((product) => product.status === "archived");
   const activeProducts = activeProductRecords.length;
   const customersWithEmail = customers.filter((customer) => Boolean(customer.email)).length;
+  const storefrontProducts =
+    selectedView === "products" && selectedProductTab === "catalog"
+      ? await getCatalogProducts(Math.max(activeProducts, 1))
+      : [];
 
-  return (
-    <div className="space-y-8 pb-10">
-      <Breadcrumbs
-        items={[
-          { href: "/", label: "Home" },
-          { label: "Admin" },
-        ]}
-      />
+return (
+  <div className="space-y-8 pb-10">
+    <Breadcrumbs
+      items={[
+        { href: "/", label: "Trang chủ" },
+        { label: "Quản trị" },
+      ]}
+    />
 
-      <section className="relative overflow-hidden rounded-[2rem] border border-stone-200 bg-[linear-gradient(135deg,#f6efe4_0%,#faf7f2_42%,#e8f1ec_100%)] px-6 py-10 dark:border-stone-700">
-        <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.7),transparent_55%)] lg:block" />
-        <div className="relative grid gap-8 lg:grid-cols-[1.4fr_0.8fr]">
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-stone-600">
-              <ShieldCheck className="h-4 w-4" />
-              Operations console
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-stone-600">
-                Commerce admin
-              </p>
-              <h1 className="mt-4 max-w-3xl font-display text-5xl leading-none text-stone-950">
-                Professional control over catalog, pricing, and customer records
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-stone-700">
-                Use this workspace to keep your storefront data clean: publish products,
-                revise pricing, and maintain checkout-ready customer profiles with fewer clicks.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3 text-sm text-stone-700">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/75 px-4 py-2">
-                <Mail className="h-4 w-4" />
-                {session.user.email}
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/75 px-4 py-2">
-                <Sparkles className="h-4 w-4" />
-                PostgreSQL catalog + hosted media
-              </div>
-            </div>
+    <section className="relative overflow-hidden rounded-[2rem] border border-stone-200 bg-[linear-gradient(135deg,#f6efe4_0%,#faf7f2_42%,#e8f1ec_100%)] px-6 py-10">
+      <div className="relative grid gap-8 lg:grid-cols-[1.4fr_0.8fr]">
+        <div className="space-y-6">
+          <div className="inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-stone-600">
+            <ShieldCheck className="h-4 w-4" />
+            Bảng điều khiển
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <AdminStatCard
-              label="Products"
-              value={products.length.toString()}
-              detail={`${activeProducts} active in storefront`}
-            />
-            <AdminStatCard
-              label="Customers"
-              value={customers.length.toString()}
-              detail={`${customersWithEmail} with email on file`}
-            />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-stone-600">
+              Quản lý cửa hàng
+            </p>
+            <h1 className="mt-4 text-5xl font-display text-stone-950">
+              Quản lý nón lá, giá bán và khách hàng
+            </h1>
+            <p className="mt-4 text-sm text-stone-700">
+              Quản lý sản phẩm, cập nhật giá và theo dõi khách hàng một cách đơn giản và nhanh chóng.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3 text-sm text-stone-700">
+            <div className="rounded-full border bg-white px-4 py-2">
+              {session.user.email}
+            </div>
           </div>
         </div>
-      </section>
 
-      {feedbackMessage ? (
-        <div
-          className={`rounded-[1.5rem] border px-5 py-4 text-sm ${
-            feedbackType === "error"
-              ? "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200"
-              : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
-          }`}
-        >
-          {feedbackMessage}
+        <div className="grid gap-4">
+          <AdminStatCard
+            label="Sản phẩm"
+            value={products.length.toString()}
+            detail={`${activeProducts} đang hiển thị`}
+          />
+          <AdminStatCard
+            label="Khách hàng"
+            value={customers.length.toString()}
+            detail={`${customersWithEmail} có email`}
+          />
         </div>
-      ) : null}
-
-      <div className="flex flex-wrap gap-3">
-        <Link
-          href={`/admin?view=products&productTab=${selectedProductTab}`}
-          className={`inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-medium transition ${
-            selectedView === "products"
-              ? "bg-stone-950 text-white dark:bg-stone-100 dark:text-stone-950"
-              : "border border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:hover:bg-stone-900"
-          }`}
-        >
-          <Package2 className="h-4 w-4" />
-          Products
-        </Link>
-        <Link
-          href="/admin?view=customers"
-          className={`inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-medium transition ${
-            selectedView === "customers"
-              ? "bg-stone-950 text-white dark:bg-stone-100 dark:text-stone-950"
-              : "border border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:hover:bg-stone-900"
-          }`}
-        >
-          <CircleUserRound className="h-4 w-4" />
-          Customers
-        </Link>
       </div>
+    </section>
 
-      <div className="grid gap-8">
-        {selectedView === "products" ? (
-        <section className={panelClassName}>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
-                Product CRUD
-              </p>
-              <h2 className="mt-2 text-3xl font-semibold text-stone-950">Catalog manager</h2>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-stone-600 dark:text-stone-300">
-                Create new inventory, revise active listings, and keep price updates organized.
-              </p>
-            </div>
-            <div className="rounded-[1.25rem] border border-stone-200 bg-stone-50 p-3 text-stone-700 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200">
-              <Package2 className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/admin?view=products&productTab=create"
-              className={`inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-medium transition ${
-                selectedProductTab === "create"
-                  ? "bg-stone-950 text-white dark:bg-stone-100 dark:text-stone-950"
-                  : "border border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:hover:bg-stone-900"
-              }`}
-            >
-              <Package2 className="h-4 w-4" />
-              Create Product
-            </Link>
-            <Link
-              href="/admin?view=products&productTab=catalog"
-              className={`inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-medium transition ${
-                selectedProductTab === "catalog"
-                  ? "bg-stone-950 text-white dark:bg-stone-100 dark:text-stone-950"
-                  : "border border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:hover:bg-stone-900"
-              }`}
-            >
-              <Boxes className="h-4 w-4" />
-              Product Catalog
-            </Link>
-          </div>
+    <div className="flex gap-3">
+      <Link href={`/admin?view=products`}>
+        <button className="px-5 py-3 rounded-full bg-[#8f5f2a] text-white">
+          Sản phẩm
+        </button>
+      </Link>
 
-          {selectedProductTab === "create" ? (
+      <Link href="/admin?view=customers">
+        <button className="px-5 py-3 rounded-full border">
+          Khách hàng
+        </button>
+      </Link>
+    </div>
+
+    {/* ================= PRODUCTS ================= */}
+    {selectedView === "products" && (
+      <section className={panelClassName}>
+        <div>
+          <p className="text-xs uppercase text-stone-500">
+            Quản lý sản phẩm
+          </p>
+          <h2 className="text-3xl font-semibold text-stone-950">
+            Danh mục nón lá
+          </h2>
+          <p className="text-sm text-stone-600">
+            Tạo mới, chỉnh sửa và quản lý sản phẩm nón lá trong cửa hàng.
+          </p>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <Link
+            href="/admin?view=products&productTab=create"
+            className={`px-5 py-3 rounded-full ${
+              selectedProductTab === "create"
+                ? "bg-[#8f5f2a] text-white"
+                : "border border-stone-300 bg-white text-stone-700"
+            }`}
+          >
+            Thêm sản phẩm
+          </Link>
+
+          <Link
+            href="/admin?view=products&productTab=catalog"
+            className={`px-5 py-3 rounded-full ${
+              selectedProductTab === "catalog"
+                ? "bg-[#8f5f2a] text-white"
+                : "border border-stone-300 bg-white text-stone-700"
+            }`}
+          >
+            Danh sách sản phẩm
+          </Link>
+        </div>
+
+        {/* CREATE */}
+        {selectedProductTab === "create" && (
           <AdminCreateProductForm
             formClassName={formShellClassName}
             labelClassName={labelClassName}
             inputClassName={inputClassName}
             primaryButtonClassName={primaryButtonClassName}
           />
-          ) : null}
+        )}
 
-          {selectedProductTab === "catalog" ? (
-          <div className={collectionShellClassName}>
-            <div className="flex items-center justify-between gap-3 border-b border-stone-200 pb-4 dark:border-stone-700">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-                  All products
-                </p>
-                <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-                  {activeProducts} active product records shown here.
-                </p>
-              </div>
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-950 dark:text-stone-300">
-                {archivedProductRecords.length} archived
-              </span>
-            </div>
+        {/* CATALOG */}
+        {selectedProductTab === "catalog" && (
+          <div className="space-y-6 mt-6">
+            <ProductList products={storefrontProducts} />
 
-            <div className="mt-4 space-y-4">
-            {activeProductRecords.map((product) => {
-              const primaryImage = product.images[0]?.url ?? null;
-
-              return (
-                <div key={product.id} className={subPanelClassName}>
-                  <div className="grid gap-6 xl:grid-cols-[240px_minmax(0,1fr)]">
-                    <ProductPreview image={primaryImage} name={product.name} status="active" />
-
-                    <div>
-                      <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="space-y-3">
-                          <h3 className="text-xl font-semibold text-stone-950">{product.name}</h3>
-                          <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                            {product.id}
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-900 dark:text-stone-300">
-                              <span className="inline-flex items-center gap-1">
-                                <Boxes className="h-3.5 w-3.5" />
-                                Product
-                              </span>
-                            </span>
-                            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-900 dark:text-stone-300">
-                              {product.images.length} image{product.images.length === 1 ? "" : "s"}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-900 dark:text-stone-300">
-                            {product.status}
-                          </span>
-                          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200">
-                            {formatDatabasePrice(product.basePriceAmount ? Number(product.basePriceAmount) : null, product.currency)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {product.description ? (
-                        <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600 dark:text-stone-300">
-                          {product.description}
-                        </p>
-                      ) : null}
-
-                      <form action={updateProductAction} className="mt-5 space-y-4 rounded-[1.5rem] border border-stone-200/80 bg-stone-50/70 p-4 dark:border-stone-700 dark:bg-stone-900/40">
-                        <input type="hidden" name="productId" value={product.id} />
-                        <input type="hidden" name="existingImages" value={product.images.map((image) => image.url).join(",")} />
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <label className={labelClassName}>
-                            Name
-                            <input name="name" required defaultValue={product.name} className={inputClassName} />
-                          </label>
-                          <label className={labelClassName}>
-                            Price
-                            <input
-                              name="price"
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              defaultValue={product.basePriceAmount ? Number(product.basePriceAmount).toFixed(2) : ""}
-                              className={inputClassName}
-                            />
-                          </label>
-                          <label className={labelClassName}>
-                            Currency
-                            <input
-                              name="currency"
-                              defaultValue={product.currency.toUpperCase()}
-                              className={inputClassName}
-                            />
-                          </label>
-                          <label className={`${labelClassName} flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 dark:border-stone-700 dark:bg-stone-950`}>
-                            <input name="active" type="checkbox" defaultChecked={product.status === "active"} className="h-4 w-4 rounded border-stone-300" />
-                            Active in storefront
-                          </label>
-                        </div>
-                        <label className={labelClassName}>
-                          Description
-                          <textarea
-                            name="description"
-                            rows={3}
-                            defaultValue={product.description ?? ""}
-                            className={inputClassName}
-                          />
-                        </label>
-                        <label className={labelClassName}>
-                          Replace images
-                          <input
-                            name="imageFiles"
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className={inputClassName}
-                          />
-                        </label>
-                        <label className={labelClassName}>
-                          Metadata JSON
-                          <textarea
-                            name="metadata"
-                            rows={3}
-                            defaultValue={JSON.stringify(product.metadata ?? {}, null, 2)}
-                            className={inputClassName}
-                          />
-                        </label>
-                        <div className="flex flex-wrap gap-3">
-                          <button className={primaryButtonClassName}>
-                            Save changes
-                          </button>
-                          <span className="inline-flex items-center rounded-full bg-white px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 dark:bg-stone-950 dark:text-stone-300">
-                            Uploading new files replaces the current product gallery
-                          </span>
-                        </div>
-                      </form>
-
-                      <form action={deleteProductAction} className="mt-4">
-                        <input type="hidden" name="productId" value={product.id} />
-                        <button className={dangerButtonClassName}>
-                          <Trash2 className="h-4 w-4" />
-                          Delete product
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-            </div>
-          </div>
-          ) : null}
-
-          {selectedProductTab === "catalog" && archivedProductRecords.length ? (
-            <div className={collectionShellClassName}>
-              <div className="flex items-center justify-between gap-3 border-b border-stone-200 pb-4 dark:border-stone-700">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-                    Archived products
-                  </p>
-                  <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-                    Archived items stay in PostgreSQL and can be reactivated later.
-                  </p>
-                </div>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-950 dark:text-stone-300">
-                  {archivedProductRecords.length} archived
-                </span>
-              </div>
-
-              <div className="mt-4 space-y-4">
-                {archivedProductRecords.map((product) => {
-                  const primaryImage = product.images[0]?.url ?? null;
-
-                  return (
-                  <div key={product.id} className={subPanelClassName}>
-                    <div className="grid gap-6 xl:grid-cols-[240px_minmax(0,1fr)]">
-                      <ProductPreview image={primaryImage} name={product.name} status="archived" />
-
-                      <div>
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                          <div>
-                            <h3 className="text-xl font-semibold text-stone-950">{product.name}</h3>
-                            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-stone-500">
-                              {product.id}
-                            </p>
-                          </div>
-                          <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-900 dark:text-stone-300">
-                            Archived
-                          </span>
-                        </div>
-                        <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600 dark:text-stone-300">
-                          This product is no longer active in the storefront. You can reactivate it by
-                          editing the record and enabling `Active in storefront`.
-                        </p>
-                        <form action={updateProductAction} className="mt-5 space-y-4 rounded-[1.5rem] border border-stone-200/80 bg-stone-50/70 p-4 dark:border-stone-700 dark:bg-stone-900/40">
-                          <input type="hidden" name="productId" value={product.id} />
-                          <input type="hidden" name="existingImages" value={product.images.map((image) => image.url).join(",")} />
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <label className={labelClassName}>
-                              Name
-                              <input name="name" required defaultValue={product.name} className={inputClassName} />
-                            </label>
-                            <label className={labelClassName}>
-                              Replace images
-                              <input name="imageFiles" type="file" accept="image/*" multiple className={inputClassName} />
-                            </label>
-                            <label className={labelClassName}>
-                              Currency
-                              <input
-                                name="currency"
-                                defaultValue={product.currency.toUpperCase()}
-                                className={inputClassName}
-                              />
-                            </label>
-                            <label className={`${labelClassName} flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 dark:border-stone-700 dark:bg-stone-950`}>
-                              <input name="active" type="checkbox" defaultChecked={product.status === "active"} className="h-4 w-4 rounded border-stone-300" />
-                              Active in storefront
-                            </label>
-                          </div>
-                          <label className={labelClassName}>
-                            Description
-                            <textarea name="description" rows={3} defaultValue={product.description ?? ""} className={inputClassName} />
-                          </label>
-                          <label className={labelClassName}>
-                            Metadata JSON
-                            <textarea name="metadata" rows={3} defaultValue={JSON.stringify(product.metadata ?? {}, null, 2)} className={inputClassName} />
-                          </label>
-                          <label className={labelClassName}>
-                            Price
-                            <input
-                              name="price"
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              defaultValue={product.basePriceAmount ? Number(product.basePriceAmount).toFixed(2) : ""}
-                              className={inputClassName}
-                            />
-                          </label>
-                          <button className={primaryButtonClassName}>Save changes</button>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-        </section>
-        ) : null}
-
-        {selectedView === "customers" ? (
-        <section className={panelClassName}>
-          <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
-                Customer management
+              <p className="text-xs uppercase text-stone-500">
+                Sản phẩm đang bán
               </p>
-              <h2 className="mt-2 text-3xl font-semibold text-stone-950">Customer records</h2>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-stone-600 dark:text-stone-300">
-                Keep contact details accurate so support, fulfillment, and billing stay aligned.
+
+              {activeProductRecords.map((product) => (
+                <AdminProductEditorItem
+                  key={product.id}
+                  product={product}
+                  labelClassName={labelClassName}
+                  inputClassName={inputClassName}
+                  primaryButtonClassName={primaryButtonClassName}
+                  dangerButtonClassName={dangerButtonClassName}
+                  subPanelClassName={subPanelClassName}
+                />
+              ))}
+            </div>
+
+            <div>
+              <p className="text-xs uppercase text-stone-500">
+                Sản phẩm ngưng hiển thị
               </p>
-            </div>
-            <div className="rounded-[1.25rem] border border-stone-200 bg-stone-50 p-3 text-stone-700 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200">
-              <CircleUserRound className="h-5 w-5" />
-            </div>
-          </div>
 
-          <form action={createCustomerAction} className={formShellClassName}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-semibold text-stone-950">Create customer</h3>
-                <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-                  Create a database-backed customer profile and sync it to Stripe.
-                </p>
-              </div>
-              <div className="hidden rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 shadow-sm md:block dark:bg-stone-950 dark:text-stone-300">
-                CRM entry
-              </div>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className={labelClassName}>
-                Name
-                <input name="name" required className={inputClassName} placeholder="Nguyen Van A" />
-              </label>
-              <label className={labelClassName}>
-                Email
-                <input name="email" type="email" required className={inputClassName} placeholder="customer@example.com" />
-              </label>
-              <label className={labelClassName}>
-                Phone
-                <input name="phone" className={inputClassName} placeholder="+84 90 000 0000" />
-              </label>
-              <label className={labelClassName}>
-                Student ID
-                <input name="studentId" required className={inputClassName} placeholder="MSSV-2026001" />
-              </label>
-            </div>
-            <label className={labelClassName}>
-              Notes
-              <textarea name="notes" rows={3} className={inputClassName} placeholder="VIP customer, wholesale buyer, internal notes..." />
-            </label>
-            <button className={primaryButtonClassName}>
-              Create customer
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </form>
-
-          <div className={collectionShellClassName}>
-            <div className="flex items-center justify-between gap-3 border-b border-stone-200 pb-4 dark:border-stone-700">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-                  All customers
-                </p>
-                <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-                  {customers.length} customer profiles available in your database.
-                </p>
-              </div>
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-950 dark:text-stone-300">
-                {customersWithEmail} with email
-              </span>
-            </div>
-
-            <div className="mt-4 space-y-4">
-            {customers.map((customer) => (
-              <div key={customer.id} className={subPanelClassName}>
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="space-y-3">
-                    <h3 className="text-xl font-semibold text-stone-950">
-                      {customer.name || "Unnamed customer"}
-                    </h3>
-                    <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                      {customer.stripeCustomerId ?? customer.id}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {customer.email ? (
-                        <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600 dark:bg-stone-900 dark:text-stone-300">
-                          <span className="inline-flex items-center gap-1">
-                            <Mail className="h-3.5 w-3.5" />
-                            {customer.email}
-                          </span>
-                        </span>
-                      ) : null}
-                      {customer.phone ? (
-                        <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600 dark:bg-stone-900 dark:text-stone-300">
-                          <span className="inline-flex items-center gap-1">
-                            <Phone className="h-3.5 w-3.5" />
-                            {customer.phone}
-                          </span>
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <p className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 dark:bg-stone-900 dark:text-stone-300">
-                    {customer.createdAt
-                      ? new Date(customer.createdAt).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "No date"}
+              {archivedProductRecords.length ? (
+                archivedProductRecords.map((product) => (
+                  <AdminProductEditorItem
+                    key={product.id}
+                    product={product}
+                    labelClassName={labelClassName}
+                    inputClassName={inputClassName}
+                    primaryButtonClassName={primaryButtonClassName}
+                    dangerButtonClassName={dangerButtonClassName}
+                    subPanelClassName={subPanelClassName}
+                  />
+                ))
+              ) : (
+                <div className={subPanelClassName}>
+                  <p className="text-sm text-stone-600">
+                    Chưa có sản phẩm nào ở trạng thái ngưng hiển thị.
                   </p>
                 </div>
-
-                <form action={updateCustomerAction} className="mt-5 space-y-4 rounded-[1.5rem] border border-stone-200/80 bg-stone-50/70 p-4 dark:border-stone-700 dark:bg-stone-900/40">
-                  <input type="hidden" name="customerId" value={customer.id} />
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <label className={labelClassName}>
-                      Name
-                      <input name="name" required defaultValue={customer.name ?? ""} className={inputClassName} />
-                    </label>
-                    <label className={labelClassName}>
-                      Email
-                      <input
-                        name="email"
-                        type="email"
-                        required
-                        defaultValue={customer.email ?? ""}
-                        className={inputClassName}
-                      />
-                    </label>
-                    <label className={labelClassName}>
-                      Student ID
-                      <input name="studentId" required defaultValue={customer.studentId} className={inputClassName} />
-                    </label>
-                    <label className={labelClassName}>
-                      Phone
-                      <input name="phone" defaultValue={customer.phone ?? ""} className={inputClassName} />
-                    </label>
-                  </div>
-                  <label className={labelClassName}>
-                    Notes
-                    <textarea
-                      name="notes"
-                      rows={3}
-                      defaultValue={customer.notes ?? ""}
-                      className={inputClassName}
-                    />
-                  </label>
-                  <div className="flex flex-wrap gap-3">
-                    <button className={primaryButtonClassName}>
-                      <CreditCard className="h-4 w-4" />
-                      Save customer
-                    </button>
-                    <span className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300">
-                      <Mail className="h-4 w-4" />
-                      Keep email, phone, and student ID current
-                    </span>
-                  </div>
-                </form>
-
-                <form action={deleteCustomerAction} className="mt-4">
-                  <input type="hidden" name="customerId" value={customer.id} />
-                  <button className={dangerButtonClassName}>
-                    <Trash2 className="h-4 w-4" />
-                    Delete customer
-                  </button>
-                </form>
-              </div>
-            ))}
+              )}
             </div>
           </div>
-        </section>
-        ) : null}
-      </div>
-    </div>
-  );
+        )}
+      </section>
+    )}
+
+    {/* ================= CUSTOMERS ================= */}
+    {selectedView === "customers" && (
+      <section className={panelClassName}>
+        <div>
+          <p className="text-xs uppercase text-stone-500">
+            Quản lý khách hàng
+          </p>
+          <h2 className="text-3xl font-semibold text-stone-950">
+            Danh sách khách hàng
+          </h2>
+          <p className="text-sm text-stone-600">
+            Lưu thông tin khách hàng để hỗ trợ bán hàng và chăm sóc tốt hơn.
+          </p>
+        </div>
+
+        <form action={createCustomerAction} className={formShellClassName}>
+          <h3 className="text-lg font-semibold">Thêm khách hàng</h3>
+
+          <input name="name" placeholder="Tên khách hàng" />
+          <input name="email" placeholder="Email" />
+          <input name="phone" placeholder="Số điện thoại" />
+
+          <textarea name="notes" placeholder="Ghi chú..." />
+
+          <button className={primaryButtonClassName}>
+            Tạo khách hàng
+          </button>
+        </form>
+
+        <div>
+          {customers.map((customer) => (
+            <div key={customer.id} className={subPanelClassName}>
+              <h3>{customer.name || "Khách hàng"}</h3>
+
+              <form action={updateCustomerAction}>
+                <input name="name" defaultValue={customer.name ?? ""} />
+                <input name="email" defaultValue={customer.email ?? ""} />
+                <input name="phone" defaultValue={customer.phone ?? ""} />
+
+                <button className={primaryButtonClassName}>
+                  Lưu
+                </button>
+              </form>
+
+              <form action={deleteCustomerAction}>
+                <button className={dangerButtonClassName}>
+                  Xóa khách hàng
+                </button>
+              </form>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+  </div>
+);
 }

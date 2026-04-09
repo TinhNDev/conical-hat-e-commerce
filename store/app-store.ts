@@ -22,7 +22,6 @@ interface AppStore {
     name: string;
     email: string;
     password: string;
-    studentId: string;
     rememberMe: boolean;
   }) => Promise<void>;
   logout: () => Promise<void>;
@@ -135,14 +134,14 @@ export const useAppStore = create<AppStore>()(
             orders: accountData.orders,
           }));
       },
-      register: async ({ name, email, password, studentId, rememberMe }) => {
+      register: async ({ name, email, password, rememberMe }) => {
         const payload = await parseResponse<AuthResponse>(
           await fetch("/api/auth/register", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ name, email, password, studentId, rememberMe }),
+            body: JSON.stringify({ name, email, password, rememberMe }),
           })
         );
 

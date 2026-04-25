@@ -24,7 +24,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const initialCategory = typeof resolvedSearchParams.category === "string"
     ? resolvedSearchParams.category
     : "all";
-  const products = await getCatalogProducts(18);
+  const products = await getCatalogProducts(null);
 
   return (
     <div className="space-y-8 pb-10">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useDeferredValue, startTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useDeferredValue } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProductCard } from "./product-card";
 import { CatalogProduct, enrichProduct } from "@/lib/ecommerce";
@@ -47,9 +47,9 @@ export const ProductList = ({
     setCategory(initialCategory);
   }, [initialCategory]);
 
-  useEffect(() => {
+  const updateProductsUrl = useCallback((nextSearchTerm: string, nextCategory: string) => {
     const nextParams = new URLSearchParams(searchParams.toString());
-    const normalizedTerm = searchTerm.trim();
+    const normalizedTerm = nextSearchTerm.trim();
 
     if (normalizedTerm) {
       nextParams.set("q", normalizedTerm);
@@ -57,8 +57,8 @@ export const ProductList = ({
       nextParams.delete("q");
     }
 
-    if (category !== "all") {
-      nextParams.set("category", category);
+    if (nextCategory !== "all") {
+      nextParams.set("category", nextCategory);
     } else {
       nextParams.delete("category");
     }
@@ -70,12 +70,10 @@ export const ProductList = ({
       return;
     }
 
-    startTransition(() => {
-      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
-        scroll: false,
-      });
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
+      scroll: false,
     });
-  }, [category, pathname, router, searchParams, searchTerm]);
+  }, [pathname, router, searchParams]);
 
   const filteredProducts = useMemo(() => {
     const term = deferredSearchTerm.trim().toLowerCase();
@@ -91,11 +89,11 @@ export const ProductList = ({
 
       const matchesPrice =
         priceFilter === "all" ||
-        (priceFilter === "under-500k" && (details.price ?? 0) < 500_000_00) ||
-        (priceFilter === "500k-1m" &&
-          (details.price ?? 0) >= 500_000_00 &&
-          (details.price ?? 0) <= 1_000_000_00) ||
-        (priceFilter === "above-1m" && (details.price ?? 0) > 1_000_000_00);
+        (priceFilter === "under-150k" && (details.price ?? 0) < 150_000_00) ||
+        (priceFilter === "150k-500k" &&
+          (details.price ?? 0) >= 150_000_00 &&
+          (details.price ?? 0) <= 500_000_00) ||
+        (priceFilter === "above-500k" && (details.price ?? 0) > 500_000_00);
 
       const matchesRating =
         ratingFilter === "all" ||
@@ -129,7 +127,19 @@ export const ProductList = ({
     currentPage * PAGE_SIZE
   );
 
-  const onFilterChange = (callback: () => void) => {
+  const updateSearchTerm = (value: string) => {
+    setSearchTerm(value);
+    setPage(1);
+    updateProductsUrl(value, category);
+  };
+
+  const updateCategory = (value: string) => {
+    setCategory(value);
+    setPage(1);
+    updateProductsUrl(searchTerm, value);
+  };
+
+  const onLocalFilterChange = (callback: () => void) => {
     callback();
     setPage(1);
   };
@@ -171,9 +181,7 @@ return (
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(event) =>
-                  onFilterChange(() => setSearchTerm(event.target.value))
-                }
+                onChange={(event) => updateSearchTerm(event.target.value)}
                 placeholder="Tìm nón lá, chất liệu, kiểu dáng..."
                 className="w-full bg-transparent text-sm text-stone-900 outline-none placeholder:text-stone-400"
               />
@@ -222,9 +230,7 @@ return (
             <input
               type="text"
               value={searchTerm}
-              onChange={(event) =>
-                onFilterChange(() => setSearchTerm(event.target.value))
-              }
+              onChange={(event) => updateSearchTerm(event.target.value)}
               placeholder="Nhập từ khóa..."
               className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none ring-0 transition focus:border-stone-500"
             />
@@ -236,9 +242,7 @@ return (
             </span>
             <select
               value={category}
-              onChange={(event) =>
-                onFilterChange(() => setCategory(event.target.value))
-              }
+              onChange={(event) => updateCategory(event.target.value)}
               className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none"
             >
               <option value="all">Tất cả</option>
@@ -257,14 +261,14 @@ return (
             <select
               value={priceFilter}
               onChange={(event) =>
-                onFilterChange(() => setPriceFilter(event.target.value))
+                onLocalFilterChange(() => setPriceFilter(event.target.value))
               }
               className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none"
             >
               <option value="all">Tất cả</option>
-              <option value="under-500k">Dưới 500.000đ</option>
-              <option value="500k-1m">500.000đ – 1.000.000đ</option>
-              <option value="above-1m">Trên 1.000.000đ</option>
+              <option value="under-150k">Dưới 150.000đ</option>
+              <option value="150k-500k">150.000đ – 500.000đ</option>
+              <option value="above-500k">Trên 500.000đ</option>
             </select>
           </label>
 
@@ -275,7 +279,7 @@ return (
             <select
               value={ratingFilter}
               onChange={(event) =>
-                onFilterChange(() => setRatingFilter(event.target.value))
+                onLocalFilterChange(() => setRatingFilter(event.target.value))
               }
               className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none"
             >
@@ -292,7 +296,7 @@ return (
             <select
               value={sortBy}
               onChange={(event) =>
-                onFilterChange(() => setSortBy(event.target.value))
+                onLocalFilterChange(() => setSortBy(event.target.value))
               }
               className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none"
             >
@@ -326,6 +330,7 @@ return (
           setRatingFilter("all");
           setSortBy("featured");
           setPage(1);
+          updateProductsUrl("", "all");
         }}
         className="rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-500 hover:text-stone-950"
       >

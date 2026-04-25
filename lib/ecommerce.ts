@@ -264,7 +264,7 @@ export const enrichProduct = (product: CatalogProduct): EnrichedProduct => {
 export const getCategorySummary = (products: CatalogProduct[]) => {
   const counts = new Map<string, { name: string; accent: string; count: number }>();
 
-  products.forEach((product) => {
+  products.filter(product => product.active === true).forEach((product) => {
     const category = getProductCategory(product);
     const existing = counts.get(category.name);
     counts.set(category.name, {

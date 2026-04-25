@@ -23,17 +23,23 @@ interface Props {
   initialReviews: ProductReview[];
 }
 
-export const ProductDetail = ({ product, relatedProducts, initialReviews }: Props) => {
+export const ProductDetail = ({
+  product,
+  relatedProducts,
+  initialReviews,
+}: Props) => {
   const router = useRouter();
   const details = enrichProduct(product);
   const { items, addItem, updateQuantity } = useCartStore();
   const { auth, wishlist, toggleWishlist } = useAppStore();
   const { addToast } = useToastStore();
+
   const [activeImage, setActiveImage] = useState(product.images?.[0] ?? null);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewRating, setReviewRating] = useState("5");
   const [reviewError, setReviewError] = useState("");
   const [productReviews, setProductReviews] = useState(initialReviews);
+
   const cartItem = items.find((item) => item.id === product.id);
   const quantity = cartItem?.quantity ?? 0;
   const isWishlisted = wishlist.includes(product.id);
@@ -46,31 +52,35 @@ export const ProductDetail = ({ product, relatedProducts, initialReviews }: Prop
       imageUrl: product.images?.[0] ?? null,
       quantity: 1,
     });
+
     addToast({
-      title: "Added to cart",
-      description: `${product.name} was added to your shopping cart.`,
+      title: "Đã thêm vào giỏ hàng",
+      description: `${product.name} đã được thêm vào giỏ hàng.`,
       variant: "success",
     });
   };
 
   const onSubmitReview = () => {
     if (!auth.isAuthenticated || !auth.user) {
-      setReviewError("Login is required before submitting a review.");
+      setReviewError("Vui lòng đăng nhập trước khi gửi đánh giá.");
+
       addToast({
-        title: "Login required",
-        description: "Sign in to submit a review under your account.",
+        title: "Cần đăng nhập",
+        description: "Vui lòng đăng nhập để gửi đánh giá bằng tài khoản của bạn.",
         variant: "error",
       });
+
       router.push(`/login?redirect=/products/${product.id}`);
       return;
     }
 
     if (!reviewComment.trim()) {
-      setReviewError("Review text is required.");
+      setReviewError("Nội dung đánh giá không được để trống.");
       return;
     }
 
     setReviewError("");
+
     fetch(`/api/products/${product.id}/reviews`, {
       method: "POST",
       headers: {
@@ -82,33 +92,41 @@ export const ProductDetail = ({ product, relatedProducts, initialReviews }: Prop
       }),
     })
       .then(async (response) => {
-        const payload = (await response.json()) as { reviews?: ProductReview[]; error?: string };
+        const payload = (await response.json()) as {
+          reviews?: ProductReview[];
+          error?: string;
+        };
 
         if (!response.ok || !payload.reviews) {
-          throw new Error(payload.error ?? "Unable to submit review.");
+          throw new Error(payload.error ?? "Không thể gửi đánh giá.");
         }
 
         setProductReviews(payload.reviews);
+
         addToast({
-          title: "Review submitted",
-          description: "Your rating and comment were added successfully.",
+          title: "Đã gửi đánh giá",
+          description: "Đánh giá và bình luận của bạn đã được thêm thành công.",
           variant: "success",
         });
+
         setReviewComment("");
         setReviewRating("5");
       })
       .catch((error: unknown) => {
-        setReviewError(error instanceof Error ? error.message : "Unable to submit review.");
+        setReviewError(
+          error instanceof Error ? error.message : "Không thể gửi đánh giá.",
+        );
       });
   };
 
   const onToggleWishlist = () => {
     if (!auth.isAuthenticated) {
       addToast({
-        title: "Login required",
-        description: "Sign in to save items to your wishlist.",
+        title: "Cần đăng nhập",
+        description: "Vui lòng đăng nhập để lưu sản phẩm yêu thích.",
         variant: "error",
       });
+
       router.push(`/login?redirect=/products/${product.id}`);
       return;
     }
@@ -133,10 +151,11 @@ export const ProductDetail = ({ product, relatedProducts, initialReviews }: Prop
               </div>
             ) : (
               <div className="flex h-[420px] items-center justify-center text-stone-500">
-                Product image unavailable
+                Chưa có hình ảnh sản phẩm
               </div>
             )}
           </div>
+
           <div className="grid grid-cols-4 gap-3">
             {(product.images ?? []).slice(0, 4).map((image) => (
               <button
@@ -167,10 +186,12 @@ export const ProductDetail = ({ product, relatedProducts, initialReviews }: Prop
               <p className="text-xs uppercase tracking-[0.26em] text-stone-500">
                 {details.category}
               </p>
+
               <h1 className="mt-2 font-display text-4xl leading-tight text-stone-950">
                 {product.name}
               </h1>
             </div>
+
             <button
               type="button"
               onClick={onToggleWishlist}
@@ -178,26 +199,33 @@ export const ProductDetail = ({ product, relatedProducts, initialReviews }: Prop
             >
               <span className="inline-flex items-center gap-2">
                 <Heart
-                  className={`h-4 w-4 ${isWishlisted ? "fill-current text-rose-500" : ""}`}
+                  className={`h-4 w-4 ${
+                    isWishlisted ? "fill-current text-rose-500" : ""
+                  }`}
                 />
-                {isWishlisted ? "Saved" : "Save"}
+                {isWishlisted ? "Đã lưu" : "Lưu"}
               </span>
             </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
             <RatingStars rating={details.rating} />
+
             <span className="text-sm text-stone-500">
-              {details.reviewCount} verified ratings
+              {details.reviewCount} đánh giá đã xác thực
             </span>
+
             {details.discountPercentage > 0 ? (
               <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-900">
-                {details.discountPercentage}% promotional discount
+                Giảm {details.discountPercentage}% khuyến mãi
               </span>
             ) : null}
           </div>
 
-          <p className="text-base leading-7 text-stone-700">{details.description}</p>
+          <p className="text-base leading-7 text-stone-700">
+            {details.description}
+          </p>
+
           <p className="text-3xl font-semibold text-stone-950">
             {formatPrice(details.price, details.currency)}
           </p>
@@ -217,25 +245,33 @@ export const ProductDetail = ({ product, relatedProducts, initialReviews }: Prop
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant="outline"
-                onClick={() => updateQuantity(product.id, Math.max(0, quantity - 1))}
+                onClick={() =>
+                  updateQuantity(product.id, Math.max(0, quantity - 1))
+                }
               >
                 -
               </Button>
-              <span className="min-w-8 text-center text-lg font-semibold">{quantity}</span>
+
+              <span className="min-w-8 text-center text-lg font-semibold">
+                {quantity}
+              </span>
+
               <Button onClick={onAddItem}>+</Button>
+
               <Button
                 asChild
                 className="ml-auto rounded-full bg-stone-950 px-6 hover:bg-stone-800"
               >
-                <Link href="/checkout">Go to checkout</Link>
+                <Link href="/checkout">Thanh toán</Link>
               </Button>
             </div>
           </div>
 
           <div className="rounded-[1.75rem] border border-stone-200 bg-[linear-gradient(180deg,#faf7f2_0%,#ffffff_100%)] p-6">
             <h2 className="text-lg font-semibold text-stone-950">
-              Technical specifications
+              Thông số kỹ thuật
             </h2>
+
             <dl className="mt-4 grid gap-3 sm:grid-cols-2">
               {details.specs.map((spec) => (
                 <div
@@ -245,6 +281,7 @@ export const ProductDetail = ({ product, relatedProducts, initialReviews }: Prop
                   <dt className="text-xs uppercase tracking-[0.2em] text-stone-500">
                     {spec.label}
                   </dt>
+
                   <dd className="mt-1 text-sm font-medium text-stone-900">
                     {spec.value}
                   </dd>
@@ -258,8 +295,9 @@ export const ProductDetail = ({ product, relatedProducts, initialReviews }: Prop
       <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-[1.75rem] border border-stone-200 bg-white p-6">
           <h2 className="font-display text-3xl text-stone-950">
-            Reviews & ratings
+            Đánh giá sản phẩm
           </h2>
+
           <div className="mt-6 space-y-4">
             {productReviews.map((review) => (
               <div
@@ -267,66 +305,85 @@ export const ProductDetail = ({ product, relatedProducts, initialReviews }: Prop
                 className="rounded-[1.25rem] border border-stone-200 bg-stone-50 p-4"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <p className="font-semibold text-stone-900">{review.author}</p>
+                  <p className="font-semibold text-stone-900">
+                    {review.author}
+                  </p>
+
                   <RatingStars rating={review.rating} className="text-sm" />
                 </div>
-                <p className="mt-3 text-sm leading-6 text-stone-700">{review.comment}</p>
+
+                <p className="mt-3 text-sm leading-6 text-stone-700">
+                  {review.comment}
+                </p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-[1.75rem] border border-stone-200 bg-stone-950 p-6 text-stone-50">
-          <h2 className="font-display text-3xl">
-            Leave a review
-          </h2>
-          <div className="mt-6 space-y-4">
-            <div className="rounded-2xl border border-stone-700 bg-stone-900 px-4 py-3 text-sm text-stone-200">
-              {auth.user ? `Reviewing as ${auth.user.name}` : "Login required to review"}
-            </div>
-            <select
-              value={reviewRating}
-              onChange={(event) => setReviewRating(event.target.value)}
-              className="w-full rounded-2xl border border-stone-700 bg-stone-900 px-4 py-3 text-sm text-white outline-none"
-            >
-              <option value="5">5 stars</option>
-              <option value="4">4 stars</option>
-              <option value="3">3 stars</option>
-              <option value="2">2 stars</option>
-              <option value="1">1 star</option>
-            </select>
-            <textarea
-              value={reviewComment}
-              onChange={(event) => setReviewComment(event.target.value)}
-              placeholder="What stood out about the product?"
-              rows={5}
-              className="w-full rounded-2xl border border-stone-700 bg-stone-900 px-4 py-3 text-sm text-white outline-none"
-            />
-            {reviewError ? <p className="text-sm text-rose-300">{reviewError}</p> : null}
-            <Button
-              onClick={onSubmitReview}
-              className="rounded-full bg-amber-200 px-6 text-stone-950 hover:bg-amber-100"
-            >
-              Submit review
-            </Button>
-          </div>
-        </div>
+<div className="rounded-[1.75rem] border border-stone-200 bg-[linear-gradient(180deg,#faf7f2_0%,#ffffff_100%)] p-6 text-stone-950">
+  <h2 className="font-display text-3xl">Viết đánh giá</h2>
+
+  <div className="mt-6 space-y-4">
+    <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
+      {auth.user
+        ? `Đang đánh giá với tên ${auth.user.name}`
+        : "Vui lòng đăng nhập để đánh giá"}
+    </div>
+
+    <select
+      value={reviewRating}
+      onChange={(event) => setReviewRating(event.target.value)}
+      className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-stone-400"
+    >
+      <option value="5">5 sao</option>
+      <option value="4">4 sao</option>
+      <option value="3">3 sao</option>
+      <option value="2">2 sao</option>
+      <option value="1">1 sao</option>
+    </select>
+
+    <textarea
+      value={reviewComment}
+      onChange={(event) => setReviewComment(event.target.value)}
+      placeholder="Bạn thích điểm nào ở sản phẩm này?"
+      rows={5}
+      className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-stone-400"
+    />
+
+    {reviewError ? (
+      <p className="text-sm text-rose-600">{reviewError}</p>
+    ) : null}
+
+    <Button
+      onClick={onSubmitReview}
+      className="rounded-full bg-stone-950 px-6 text-white hover:bg-stone-800"
+    >
+      Gửi đánh giá
+    </Button>
+  </div>
+</div>
       </section>
 
       <section className="space-y-5">
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.28em] text-stone-500">
-              Related products
+              Sản phẩm liên quan
             </p>
+
             <h2 className="mt-2 font-display text-3xl text-stone-950">
-              More from this collection
+              Sản phẩm cùng bộ sưu tập
             </h2>
           </div>
-          <Link href="/products" className="text-sm font-medium text-stone-700 underline-offset-4 hover:underline">
-            Browse all products
+
+          <Link
+            href="/products"
+            className="text-sm font-medium text-stone-700 underline-offset-4 hover:underline"
+          >
+            Xem tất cả sản phẩm
           </Link>
         </div>
+
         <div className="grid gap-5 md:grid-cols-3">
           {relatedProducts.map((relatedProduct) => {
             const related = enrichProduct(relatedProduct);
@@ -349,17 +406,20 @@ export const ProductDetail = ({ product, relatedProducts, initialReviews }: Prop
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center bg-stone-100 text-stone-500">
-                      No image
+                      Chưa có hình ảnh
                     </div>
                   )}
                 </div>
+
                 <div className="p-5">
                   <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
                     {related.category}
                   </p>
+
                   <h3 className="mt-2 text-xl font-semibold text-stone-950">
                     {relatedProduct.name}
                   </h3>
+
                   <p className="mt-3 text-sm text-stone-600">
                     {formatPrice(related.price, related.currency)}
                   </p>

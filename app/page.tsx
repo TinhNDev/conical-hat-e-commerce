@@ -20,11 +20,14 @@ const formatPrice = (price?: { unit_amount: number | null; currency?: string } |
 };
 
 export default async function Home() {
-  const products = await getCatalogProducts(8);
+  const [products, allProducts] = await Promise.all([
+    getCatalogProducts(8),
+    getCatalogProducts(null),
+  ]);
 
   const heroProduct = products[0];
   const featuredProducts = products.slice(0, 3);
-  const categories = getCategorySummary(products).slice(0, 4);
+  const categories = getCategorySummary(allProducts).slice(0, 4);
   const heroPrice = heroProduct?.default_price;
   const heroImage = heroProduct?.images?.[0];
 

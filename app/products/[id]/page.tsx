@@ -29,8 +29,8 @@ export default async function ProductPage({
     <div className="pb-10">
       <Breadcrumbs
         items={[
-          { href: "/", label: "Home" },
-          { href: "/products", label: "Products" },
+          { href: "/", label: "Trang chủ" },
+          { href: "/products", label: "Sản phẩm" },
           { label: product.name },
         ]}
       />

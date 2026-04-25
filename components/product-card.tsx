@@ -65,9 +65,6 @@ export const ProductCard = ({ product }: Props) => {
       <div className="flex flex-1 flex-col p-5">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-stone-500">
-              Featured product
-            </p>
             <Link
               href={`/products/${product.id}`}
               className="mt-2 block font-display text-2xl leading-tight text-stone-950"
@@ -102,22 +99,16 @@ export const ProductCard = ({ product }: Props) => {
         </div>
         <div className="mt-4">
           <RatingStars rating={details.rating} />
-          <p className="mt-1 text-xs text-stone-500">
-            {details.reviewCount} shopper reviews
-          </p>
         </div>
 
         <div className="mt-auto flex items-center justify-between pt-6">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
-              Price
-            </p>
             <p className="text-xl font-semibold text-stone-950">
               {formatPrice(details.price, details.currency)}
             </p>
           </div>
           <Button asChild className="rounded-full bg-stone-950 px-5 text-stone-50 hover:bg-stone-800">
-            <Link href={`/products/${product.id}`}>View details</Link>
+            <Link href={`/products/${product.id}`}>Chi tiết sản phẩm</Link>
           </Button>
         </div>
       </div>

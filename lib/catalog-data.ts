@@ -57,7 +57,7 @@ export const getCatalogProductRecordById = async (
   });
 };
 
-export const getCatalogProducts = async (limit = 18) => {
+export const getCatalogProducts = async (limit: number | null = 18) => {
   const products = await prisma.product.findMany({
     where: {
       status: "active",
@@ -72,7 +72,7 @@ export const getCatalogProducts = async (limit = 18) => {
     orderBy: {
       updatedAt: "desc",
     },
-    take: limit,
+    ...(limit == null ? {} : { take: limit }),
   });
 
   return products.map((product) => mapRecordToCatalogProduct(product));

@@ -29,8 +29,8 @@ const navLinks = [
   { href: "/products", label: "Sản phẩm" },
   { href: "/admin", label: "Admin" },
   { href: "/blog", label: "Blog / FAQ" },
-  { href: "/contact", label: "Contact" },
-  { href: "/about", label: "About" },
+  { href: "/contact", label: "Liên hệ" },
+  { href: "/about", label: "Về chúng tôi" },
 ];
 
 export const Navbar = () => {
@@ -87,8 +87,26 @@ export const Navbar = () => {
   const submitQuickSearch = (value: string) => {
     const nextValue = value.trim();
     setSearchOpen(false);
+    setMobileOpen(false);
     setQuickSearchTerm(nextValue);
-    router.push(nextValue ? `/products?q=${encodeURIComponent(nextValue)}` : "/products");
+    router.push(
+      nextValue ? `/products?q=${encodeURIComponent(nextValue)}` : "/products"
+    );
+  };
+
+  const handleSearchButtonClick = () => {
+    if (!searchOpen) {
+      setSearchOpen(true);
+      setMobileOpen(false);
+      return;
+    }
+
+    if (trimmedQuickSearchTerm) {
+      submitQuickSearch(trimmedQuickSearchTerm);
+      return;
+    }
+
+    searchInputRef.current?.focus();
   };
 
   return (
@@ -142,16 +160,9 @@ export const Navbar = () => {
             >
               <button
                 type="button"
-                onClick={() => {
-                  if (searchOpen && !trimmedQuickSearchTerm) {
-                    setSearchOpen(false);
-                    return;
-                  }
-
-                  setSearchOpen(true);
-                }}
+                onClick={handleSearchButtonClick}
                 className="flex h-11 w-11 flex-none items-center justify-center text-stone-700 transition hover:text-stone-950 dark:text-stone-100 dark:hover:text-white"
-                aria-label={searchOpen ? "Expand search" : "Search products"}
+                aria-label={searchOpen ? "Submit search" : "Open search"}
               >
                 <MagnifyingGlassIcon className="h-5 w-5" />
               </button>
@@ -165,7 +176,7 @@ export const Navbar = () => {
                   ref={searchInputRef}
                   value={quickSearchTerm}
                   onChange={(event) => setQuickSearchTerm(event.target.value)}
-                  placeholder="Search products, styles, or categories"
+                  placeholder="Tìm kiếm sản phẩm"
                   className="w-full bg-transparent py-2 text-sm text-stone-900 outline-none placeholder:text-stone-400 dark:text-stone-100 dark:placeholder:text-stone-500"
                 />
                 {trimmedQuickSearchTerm ? (
@@ -192,7 +203,10 @@ export const Navbar = () => {
 
             <button
               type="button"
-              onClick={() => setSearchOpen((value) => !value)}
+              onClick={() => {
+                setSearchOpen((value) => !value);
+                setMobileOpen(false);
+              }}
               className="rounded-full border border-stone-200 bg-white/80 p-2.5 text-stone-700 transition hover:border-stone-400 hover:text-stone-950 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-100 dark:hover:border-stone-500 dark:hover:text-white sm:hidden"
               aria-label="Search products"
             >
@@ -219,7 +233,10 @@ export const Navbar = () => {
             <Button
               variant="ghost"
               className="rounded-full border border-stone-200 bg-white/80 p-2.5 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-100 lg:hidden"
-              onClick={() => setMobileOpen((prev) => !prev)}
+              onClick={() => {
+                setMobileOpen((prev) => !prev);
+                setSearchOpen(false);
+              }}
             >
               {mobileOpen ? (
                 <XMarkIcon className="h-6 w-6" />
@@ -280,6 +297,14 @@ export const Navbar = () => {
                   placeholder="Search products or styles"
                   className="w-full bg-transparent text-sm text-stone-900 outline-none placeholder:text-stone-400 dark:text-stone-100"
                 />
+                {trimmedQuickSearchTerm ? (
+                  <button
+                    type="submit"
+                    className="rounded-full bg-[#8f5f2a] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-[#7a5124] dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-stone-200"
+                  >
+                    Go
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => {

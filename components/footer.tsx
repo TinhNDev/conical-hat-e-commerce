@@ -31,7 +31,7 @@ const footerColumns = [
 const contactItems = [
   {
     icon: EnvelopeIcon,
-    label: "support@nonla.vn",
+    label: "24126125@student.hcmute.edu.vn",
   },
   {
     icon: PhoneIcon,
@@ -39,7 +39,7 @@ const contactItems = [
   },
   {
     icon: MapPinIcon,
-    label: "227 Nguyễn Văn Cừ, Quận 5, TP. Hồ Chí Minh",
+    label: "Số 1, Võ Văn Vgân, Thủ Đức, TP. Hồ Chí Minh",
   },
 ];
 

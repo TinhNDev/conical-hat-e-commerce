@@ -25,11 +25,13 @@ export const CheckoutForm = () => {
   const { items, discountPercentage, clearCart } = useCartStore();
   const { addOrder, auth } = useAppStore();
   const { addToast } = useToastStore();
+
   const [form, setForm] = useState({
     ...initialForm,
     fullName: auth.user?.name ?? "",
     email: auth.user?.email ?? "",
   });
+
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [error, setError] = useState("");
 
@@ -43,19 +45,28 @@ export const CheckoutForm = () => {
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    [items]
+    [items],
   );
+
   const discountAmount = Math.round((subtotal * discountPercentage) / 100);
   const total = subtotal - discountAmount;
 
+  const paymentMethodLabel: Record<PaymentMethod, string> = {
+    card: "Thẻ",
+    cod: "COD",
+    bank: "Chuyển khoản",
+  };
+
   const onSubmit = () => {
     if (!auth.isAuthenticated || !auth.user) {
-      setError("Please login before placing an order.");
+      setError("Vui lòng đăng nhập trước khi đặt hàng.");
+
       addToast({
-        title: "Login required",
-        description: "Sign in to continue to checkout.",
+        title: "Cần đăng nhập",
+        description: "Vui lòng đăng nhập để tiếp tục thanh toán.",
         variant: "error",
       });
+
       router.push("/login?redirect=/checkout");
       return;
     }
@@ -72,26 +83,32 @@ export const CheckoutForm = () => {
     ];
 
     if (!items.length) {
-      setError("Your cart is empty.");
+      setError("Giỏ hàng của bạn đang trống.");
+
       addToast({
-        title: "Checkout blocked",
-        description: "Your cart is empty.",
+        title: "Không thể thanh toán",
+        description: "Giỏ hàng của bạn đang trống.",
         variant: "error",
       });
+
       return;
     }
 
     if (requiredFields.some((value) => !value.trim())) {
-      setError("Please complete the shipping form before placing the order.");
+      setError("Vui lòng điền đầy đủ thông tin giao hàng trước khi đặt hàng.");
+
       addToast({
-        title: "Form incomplete",
-        description: "Please complete the shipping form before placing the order.",
+        title: "Thông tin chưa đầy đủ",
+        description:
+          "Vui lòng điền đầy đủ thông tin giao hàng trước khi đặt hàng.",
         variant: "error",
       });
+
       return;
     }
 
     setError("");
+
     addOrder({
       items,
       discountAmount,
@@ -101,20 +118,25 @@ export const CheckoutForm = () => {
     })
       .then((order) => {
         clearCart();
+
         addToast({
-          title: "Order placed",
-          description: `Order ${order.id} was created successfully.`,
+          title: "Đặt hàng thành công",
+          description: `Đơn hàng ${order.id} đã được tạo thành công.`,
           variant: "success",
         });
+
         router.push(`/success?orderId=${order.id}`);
       })
       .catch((submissionError: unknown) => {
         const message =
-          submissionError instanceof Error ? submissionError.message : "Unable to place order.";
+          submissionError instanceof Error
+            ? submissionError.message
+            : "Không thể đặt hàng.";
 
         setError(message);
+
         addToast({
-          title: "Checkout failed",
+          title: "Thanh toán thất bại",
           description: message,
           variant: "error",
         });
@@ -125,10 +147,12 @@ export const CheckoutForm = () => {
     return (
       <div className="rounded-[2rem] border border-dashed border-stone-300 bg-stone-50 px-6 py-14 text-center">
         <h1 className="font-display text-4xl text-stone-950">
-          Checkout is waiting on your cart
+          Giỏ hàng của bạn đang trống
         </h1>
+
         <p className="mt-3 text-sm text-stone-600">
-          Add products first, then come back here to complete shipping and payment.
+          Hãy thêm sản phẩm vào giỏ hàng trước, sau đó quay lại để hoàn tất
+          thông tin giao hàng và thanh toán.
         </p>
       </div>
     );
@@ -139,25 +163,33 @@ export const CheckoutForm = () => {
       <section className="space-y-6">
         <div className="rounded-[1.75rem] border border-stone-200 bg-white p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
-            Shipping address
+            Thông tin giao hàng
           </p>
+
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             {[
-              ["fullName", "Full name"],
+              ["fullName", "Họ và tên"],
               ["email", "Email"],
-              ["phone", "Phone"],
-              ["addressLine1", "Address line 1"],
-              ["addressLine2", "Address line 2"],
-              ["city", "City"],
-              ["state", "State / Province"],
-              ["postalCode", "Postal code"],
-              ["country", "Country"],
+              ["phone", "Số điện thoại"],
+              ["addressLine1", "Địa chỉ"],
+              ["addressLine2", "Địa chỉ bổ sung"],
+              ["city", "Thành phố"],
+              ["state", "Tỉnh / Khu vực"],
+              ["postalCode", "Mã bưu điện"],
+              ["country", "Quốc gia"],
             ].map(([key, label]) => (
               <label
                 key={key}
-                className={`space-y-2 ${key === "addressLine1" || key === "addressLine2" ? "sm:col-span-2" : ""}`}
+                className={`space-y-2 ${
+                  key === "addressLine1" || key === "addressLine2"
+                    ? "sm:col-span-2"
+                    : ""
+                }`}
               >
-                <span className="text-sm font-medium text-stone-700">{label}</span>
+                <span className="text-sm font-medium text-stone-700">
+                  {label}
+                </span>
+
                 <input
                   value={form[key as keyof typeof form]}
                   onChange={(event) =>
@@ -166,7 +198,7 @@ export const CheckoutForm = () => {
                       [key]: event.target.value,
                     }))
                   }
-                  className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-stone-500"
                 />
               </label>
             ))}
@@ -175,20 +207,33 @@ export const CheckoutForm = () => {
 
         <div className="rounded-[1.75rem] border border-stone-200 bg-[linear-gradient(180deg,#faf7f2_0%,#ffffff_100%)] p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
-            Payment method
+            Phương thức thanh toán
           </p>
+
           <div className="mt-5 space-y-3">
             {[
-              { value: "card", label: "Card payment", note: "Instant confirmation for demo orders." },
-              { value: "cod", label: "Cash on delivery", note: "Useful for testing alternate checkout paths." },
-              { value: "bank", label: "Bank transfer", note: "Marks the order as processing." },
+              {
+                value: "card",
+                label: "Thanh toán bằng thẻ",
+                note: "Xác nhận đơn hàng ngay lập tức cho đơn demo.",
+              },
+              {
+                value: "cod",
+                label: "Thanh toán khi nhận hàng",
+                note: "Phù hợp để kiểm tra luồng thanh toán thay thế.",
+              },
+              {
+                value: "bank",
+                label: "Chuyển khoản ngân hàng",
+                note: "Đơn hàng sẽ được đánh dấu là đang xử lý.",
+              },
             ].map((option) => (
               <label
                 key={option.value}
-                className={`flex cursor-pointer items-start gap-3 rounded-[1.25rem] border px-4 py-4 ${
+                className={`flex cursor-pointer items-start gap-3 rounded-[1.25rem] border px-4 py-4 transition ${
                   paymentMethod === option.value
                     ? "border-[#8f5f2a] bg-[#8f5f2a] text-white"
-                    : "border-stone-200 bg-white text-stone-900"
+                    : "border-stone-200 bg-white text-stone-900 hover:border-stone-300"
                 }`}
               >
                 <input
@@ -196,9 +241,12 @@ export const CheckoutForm = () => {
                   name="paymentMethod"
                   value={option.value}
                   checked={paymentMethod === option.value}
-                  onChange={() => setPaymentMethod(option.value as PaymentMethod)}
+                  onChange={() =>
+                    setPaymentMethod(option.value as PaymentMethod)
+                  }
                   className="mt-1"
                 />
+
                 <div>
                   <p className="font-semibold">{option.label}</p>
                   <p className="text-sm opacity-80">{option.note}</p>
@@ -211,43 +259,56 @@ export const CheckoutForm = () => {
 
       <aside className="rounded-[1.75rem] border border-[#d9c8ae] bg-[linear-gradient(180deg,#8f5f2a_0%,#6f7f59_100%)] p-6 text-stone-50">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-200/80">
-          Order summary
+          Tóm tắt đơn hàng
         </p>
+
         <div className="mt-5 space-y-4">
           {items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-3 text-sm">
+            <div
+              key={item.id}
+              className="flex items-center justify-between gap-3 text-sm"
+            >
               <div>
                 <p className="font-medium">{item.name}</p>
-                <p className="text-stone-200/80">Qty {item.quantity}</p>
+                <p className="text-stone-200/80">
+                  Số lượng {item.quantity}
+                </p>
               </div>
+
               <span>{formatPrice(item.price * item.quantity)}</span>
             </div>
           ))}
         </div>
+
         <div className="mt-6 space-y-3 border-t border-white/15 pt-4 text-sm">
           <div className="flex justify-between">
-            <span>Subtotal</span>
+            <span>Tạm tính</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
+
           <div className="flex justify-between">
-            <span>Discount</span>
+            <span>Giảm giá</span>
             <span>-{formatPrice(discountAmount)}</span>
           </div>
+
           <div className="flex justify-between">
-            <span>Selected payment</span>
-            <span className="uppercase">{paymentMethod}</span>
+            <span>Phương thức đã chọn</span>
+            <span>{paymentMethodLabel[paymentMethod]}</span>
           </div>
+
           <div className="flex justify-between text-lg font-semibold">
-            <span>Total</span>
+            <span>Tổng cộng</span>
             <span>{formatPrice(total)}</span>
           </div>
         </div>
+
         {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
+
         <Button
           onClick={onSubmit}
           className="mt-6 w-full rounded-full bg-amber-200 text-stone-950 hover:bg-amber-100"
         >
-          Place order
+          Đặt hàng
         </Button>
       </aside>
     </div>
